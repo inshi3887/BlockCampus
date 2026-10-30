@@ -4,6 +4,7 @@
     <Menu v-else-if="store.ui.screen !== 'game'" @start="startGame" />
     <GameView v-if="gameMounted" v-show="store.ui.screen === 'game'" ref="gv" />
     <CampusHUD v-if="authorized" />
+    <Classroom v-if="authorized" />
     <div v-if="loading" class="loading">
       <div class="mc-panel load-box">
         <div class="mc-title">方块羊城</div>
@@ -19,6 +20,7 @@
 import { ref, nextTick } from 'vue'
 import AccountGate from './components/AccountGate.vue'
 import CampusHUD from './components/CampusHUD.vue'
+import Classroom from './components/Classroom.vue'
 import { store } from './game/store.js'
 import Menu from './components/Menu.vue'
 import GameView from './components/GameView.vue'
