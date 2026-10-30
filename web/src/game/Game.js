@@ -1,3 +1,4 @@
+import {account} from '../campus/session.js'
 // 游戏主控：渲染循环、系统调度、交互逻辑
 import * as THREE from 'three'
 import { CollisionWorld } from './physics.js'
@@ -579,9 +580,10 @@ export class Game {
     show()
   }
   buy(id) {
+    if(account.user&&!account.guest)return toast('校园账号请使用装扮商店；城市陈列暂不售卖')
     const item = FOODS[id] || SOUVENIRS[id]
     const price = item.price || 0
-    if (store.save.money < price) return toast('💸 钱不够了，完成任务可以获得奖励', 'warn')
+    if ((!account.user || account.guest) && store.save.money < price) return toast('💸 钱不够了，完成任务可以获得奖励', 'warn')
     if (events.buy(id, price)) toast(`购买成功：${item.icon} ${item.name}  -¥${price}`)
   }
   // ---------- 地铁 ----------
@@ -610,14 +612,14 @@ export class Game {
   // ---------- 巴士 ----------
   busInteract(stop) {
     if (this.transport.busAt(stop)) {
-      if (store.save.money < 2) return toast('车费不足', 'warn')
-      store.save.money -= 2
+      if ((!account.user || account.guest) && store.save.money < 2) return toast('车费不足', 'warn')
+      if(!account.user || account.guest) store.save.money -= 2
       const p = this.player
       p.ride = { type: 'bus', obj: this.transport.bus, local: new THREE.Vector3(0.7, 3.35, 1.4), sit: true, faceYaw: 0 }
       p.view = 'third'
       p.camDist = 9
       events.count('bus')
-      toast('🚌 已上车（¥2）。到站后按 E 下车')
+      toast('🚌 已上车（校园内测免费乘坐）。到站后按 E 下车')
     } else {
       const eta = this.transport.busETA(stop)
       this.dialog({ title: '🚌 观光巴士 1 路', text: `线路：广州塔 ⇄ 珠江新城 ⇄ 北京路 ⇄ 陈家祠\n下一班车预计 ${eta} 秒后到达 ${stop.name}站，请在站台稍候。`, options: [{ label: '好的', action: () => this.closeDialog() }] })
@@ -634,8 +636,8 @@ export class Game {
   // ---------- 夜游 ----------
   startCruise(it) {
     this.closeDialog()
-    if (store.save.money < 60) return toast('船票需要 ¥60', 'warn')
-    store.save.money -= 60
+    if ((!account.user || account.guest) && store.save.money < 60) return toast('船票需要 ¥60', 'warn')
+    if(!account.user || account.guest) store.save.money -= 60
     this.cruisePier = PIERS.find((x) => x.id === it.pier)
     this.fade('🚢 登船中…', () => {
       const boat = this.transport.startCruise(this.cruisePier)
@@ -696,8 +698,8 @@ export class Game {
   // ---------- 索道 ----------
   rideCable(dir) {
     this.closeDialog()
-    if (store.save.money < 25) return toast('票价 ¥25', 'warn')
-    store.save.money -= 25
+    if ((!account.user || account.guest) && store.save.money < 25) return toast('票价 ¥25', 'warn')
+    if(!account.user || account.guest) store.save.money -= 25
     const tr = this.transport
     const p = this.player
     const gd = tr.gondolas[0]

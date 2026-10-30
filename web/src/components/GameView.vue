@@ -10,11 +10,11 @@
           <div class="meta">
             <span>{{ hud.weatherIcon }} {{ hud.weatherName }}</span>
             <span>🕒 {{ hud.time }} {{ hud.period }}</span>
-            <span>💰 ¥{{ store.save.money }}</span>
+            <span v-if="account.guest">游客零钱 ¥{{ store.save.money }}</span>
             <span v-if="hud.alt > 30">⛰ {{ hud.alt }}m</span>
           </div>
         </div>
-        <div class="tasks mc-panel" v-if="trackTask || dailyLeft.length">
+        <div class="tasks mc-panel" v-if="account.guest && (trackTask || dailyLeft.length)">
           <div class="tt">📌 任务</div>
           <div v-if="trackTask" class="task"><b>□ {{ trackTask.title }}</b><div class="muted">{{ trackTask.desc }}</div></div>
           <div v-for="t in dailyLeft" :key="t.id" class="task small">{{ t.done ? '☑' : '□' }} {{ t.title }} <span class="muted">{{ t.p[0] }}/{{ t.p[1] }}</span></div>
@@ -122,6 +122,7 @@
 </template>
 
 <script setup>
+import {account} from '../campus/session.js'
 import { ref, computed, onBeforeUnmount, reactive } from 'vue'
 import { store } from '../game/store.js'
 import { Game } from '../game/Game.js'
