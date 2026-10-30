@@ -1,0 +1,2 @@
+CREATE TABLE ads(id uuid PRIMARY KEY,advertiser text NOT NULL,slot text NOT NULL,landmark text NOT NULL,upload_id uuid REFERENCES uploads(id),starts_at timestamptz NOT NULL,ends_at timestamptz NOT NULL,active boolean NOT NULL DEFAULT false,CHECK(ends_at>starts_at));
+CREATE TABLE ad_metrics(ad_id uuid REFERENCES ads(id),account_id uuid REFERENCES accounts(id),day text,kind text CHECK(kind IN ('impression','click')),PRIMARY KEY(ad_id,account_id,day,kind));
