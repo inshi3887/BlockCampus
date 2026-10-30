@@ -1,8 +1,25 @@
-import {account} from './session.js'
+import {account,api,eventKey,refreshEconomy} from './session.js'
 import {G} from '../game/instance.js'
 import {Builder,disposeGroup} from '../game/builder.js'
+import {toast} from '../game/store.js'
 let decor=null
-export function equip(sku){if(!account.economy?.inventory.includes(sku))return;const game=G.game;if(!game)return
+let using=false
+const pendingUses=new Map()
+export async function equip(sku){
+ if(using||!account.economy?.inventory.includes(sku)||!G.game)return
+ using=true
+ try {
+  const item=account.economy.catalog.find(i=>i.id===sku)
+  if(item?.consumable){
+   const intent=account.user.id+':'+sku
+   const key=pendingUses.get(intent)||eventKey();pendingUses.set(intent,key)
+   await api('/shop/use',{key,sku});pendingUses.delete(intent)
+   apply(sku);await refreshEconomy()
+  }else apply(sku)
+  toast('已使用：'+item.name)
+ }catch(error){toast(error.message,'warn')}finally{using=false}
+}
+function apply(sku){const game=G.game;if(!game)return
  if(sku==='cap'){game.player.char.addAccessory('cap');game.player.char.showAccessory('cap',true);return}
  if(sku==='frame'){document.documentElement.dataset.photoFrame='campus';return}
  if(sku==='profile5'||sku==='copper-border'){document.documentElement.dataset.profileFrame=sku;return}

@@ -89,3 +89,9 @@
 | B06–B07 | npm test；npm run test:storage | 内容权限/审核/补发与S3协议通过；真实MinIO待复测 |
 | F01–F07 | npm run build；浏览器QA | 页面与核心交互通过；图片上传全链需真实S3复测 |
 | F08 | npm test；npm run test:storage；npm run check:places；npm run build | 通过；目标硬件60FPS与整栈部署待验收 |
+
+## R01 · 银铜消耗品（本地提交）
+- 新迁移 008：旧库存默认 1 件；木纹边框 100 铜、银色贴纸 100 银（10000 铜单位）可重复购买，应用一次扣 1 件。金币装扮仍永久拥有。
+- 买入、使用、库存不足、并发与重试均由服务端事务/UUID 回执判定；商店与背包显示数量，网络失败重试沿用键；无兑换入口。
+- 运行：`npm run migrate` 后按 README 启动前后端。
+- 验证：`npm test` 9 项通过（119 个 API 请求），覆盖重复买入、同键不重复扣款/扣库存、并发超量使用失败、清空后补充余额再次购买使用；`npm run build` 通过。

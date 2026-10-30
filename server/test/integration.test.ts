@@ -53,6 +53,31 @@ test('full PostgreSQL API: auth/save/economy/lessons/moderation/ads and abuse bo
  await raw.query('UPDATE wallets SET gold_copper=20000 WHERE account_id=$1',[id]);const distinct=await Promise.all([call('POST','/api/shop/buy',{key:randomUUID(),sku:'frame'},cookie),call('POST','/api/shop/buy',{key:randomUUID(),sku:'plant'},cookie)]);assert.deepEqual(distinct.map(r=>r.statusCode).sort(),[200,400]);assert.ok(Number((await raw.query('SELECT gold_copper FROM wallets WHERE account_id=$1',[id])).rows[0].gold_copper)>=0)
  assert.equal((await call('POST','/api/shop/buy',{key:randomUUID(),sku:'profile5'},cookie)).statusCode,400)
  assert.equal((await call('POST','/api/economy/convert',{gold:1},cookie)).statusCode,404)
+ // Repeated sinks, receipts and concurrent consumption remain server authoritative.
+ assert.equal((await call('POST','/api/shop/buy',{key:randomUUID(),sku:'cap'},cookie)).statusCode,409)
+ await raw.query('UPDATE wallets SET copper=300,silver_copper=30000 WHERE account_id=$1',[id])
+ for(const sku of ['copper-border','silver-sticker']){
+  for(let i=0;i<3;i++){
+   const body={key:randomUUID(),sku};const purchased=await call('POST','/api/shop/buy',body,cookie)
+   assert.equal(purchased.statusCode,200,purchased.body);assert.equal(purchased.json().quantity,i+1)
+   assert.deepEqual((await call('POST','/api/shop/buy',body,cookie)).json(),purchased.json())
+  }
+  assert.equal((await call('POST','/api/shop/buy',{key:randomUUID(),sku},cookie)).statusCode,400)
+  const use={key:randomUUID(),sku};const used=await Promise.all([call('POST','/api/shop/use',use,cookie),call('POST','/api/shop/use',use,cookie)])
+  for(const r of used){assert.equal(r.statusCode,200,r.body);assert.equal(r.json().quantity,2)}
+  const concurrent=await Promise.all(Array.from({length:3},()=>call('POST','/api/shop/use',{key:randomUUID(),sku},cookie)))
+  assert.deepEqual(concurrent.map(r=>r.statusCode).sort(),[200,200,400])
+  assert.equal((await call('GET','/api/economy',undefined,cookie)).json().quantities[sku],0)
+  assert.equal((await call('GET','/api/economy',undefined,cookie)).json().inventory.includes(sku),false)
+ }
+ const empty=(await call('GET','/api/economy',undefined,cookie)).json();assert.equal(empty.copper,0);assert.equal(empty.silver_copper,0)
+ // Accumulated daily proceeds can be spent again after all stock has been used.
+ await raw.query('UPDATE wallets SET copper=copper+100,silver_copper=silver_copper+10000 WHERE account_id=$1',[id])
+ for(const sku of ['copper-border','silver-sticker']){
+  assert.equal((await call('POST','/api/shop/buy',{key:randomUUID(),sku},cookie)).json().quantity,1)
+  assert.equal((await call('POST','/api/shop/use',{key:randomUUID(),sku},cookie)).json().quantity,0)
+ }
+ assert.equal((await call('POST','/api/shop/use',{key:randomUUID(),sku:'cap'},cookie)).statusCode,400)
  const lesson=(await call('POST','/api/lessons/start',{key:randomUUID(),seat:1,speed:1},cookie)).json();assert.ok(lesson.id)
  assert.equal((await call('POST',`/api/lessons/${lesson.id}/event`,{key:randomUUID(),type:'finish'},cookie)).statusCode,400)
  await raw.query("UPDATE lessons SET started_at=now()-interval '601 seconds',watched_seconds=600 WHERE id=$1",[lesson.id])

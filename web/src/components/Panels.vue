@@ -91,7 +91,7 @@
     <!-- 背包 -->
     <div v-else-if="ui.panel === 'bag'" class="mc-panel panel">
       <div class="head"><span class="mc-title">🎒 背包</span><span v-if="account.guest">游客零钱 ¥{{ store.save.money }}</span><button class="mc-btn small" @click="close">✕</button></div>
-      <template v-if="!account.guest"><div class="muted sub">校园装扮</div><div class="slots"><button v-for="sku in account.economy?.inventory" :key="sku" class="mc-btn small" @click="equip(sku)">{{account.economy.catalog.find(i=>i.id===sku)?.name}} · 使用</button><p v-if="!account.economy?.inventory.length" class="muted">还没有装扮，上课升级可获得金币。</p></div></template>
+      <template v-if="!account.guest"><div class="muted sub">校园装扮</div><div class="slots"><button v-for="sku in account.economy?.inventory" :key="sku" class="mc-btn small" @click="equip(sku)">{{account.economy.catalog.find(i=>i.id===sku)?.name}} · 数量 {{account.economy.quantities?.[sku]||1}} · 使用</button><p v-if="!account.economy?.inventory.length" class="muted">还没有装扮，上课升级可获得金币。</p></div></template>
       <div class="muted sub">纪念品</div>
       <div class="slots">
         <div v-for="(n, id) in store.save.items" :key="id" class="slot" :title="SOUVENIRS[id].name + '：' + SOUVENIRS[id].desc">
