@@ -39,7 +39,7 @@ export function economyModule(app:FastifyInstance,db:DB,play:any) {
   return idempotent(db,req.account.id,b.key,'photo:'+b.landmark,async tx=>{
    const place=LANDMARKS.find(p=>p.id===b.landmark);if(!place)fail('未知景点');if(Math.hypot(b.position.x-place.x,b.position.z-place.z)>place.radius)fail('请靠近景点拍照')
    const recent=(await tx.query("SELECT 1 FROM photo_events WHERE account_id=$1 AND created_at>now()-interval '10 seconds'",[req.account.id])).rows.length;if(recent)fail('拍照过于频繁',429)
-   const id=randomUUID();await tx.query('INSERT INTO photo_events(id,account_id,landmark) VALUES($1,$2,$3)',[id,req.account.id,b.landmark]);return {eventId:id,...await settlePhoto(tx,req.account.id,id,'normal')}
+   const id=randomUUID();const campaign=(await tx.query('SELECT id,slot FROM ads WHERE landmark=$1 AND active=true AND now() BETWEEN starts_at AND ends_at ORDER BY starts_at DESC LIMIT 1',[b.landmark])).rows[0];await tx.query('INSERT INTO photo_events(id,account_id,landmark,campaign_id) VALUES($1,$2,$3,$4)',[id,req.account.id,b.landmark,campaign?.id||null]);return {eventId:id,adSlot:campaign?.slot||null,...campaign?{reward:null,awaitingPublication:true}:await settlePhoto(tx,req.account.id,id,'normal')}
   })
  })
  app.get('/api/places',()=>LANDMARKS)
@@ -52,9 +52,12 @@ export function economyModule(app:FastifyInstance,db:DB,play:any) {
  app.post('/api/lessons/:id/event',{preHandler:play},req=>{const lessonId=keySchema.parse((req.params as any).id);const b=z.object({key:keySchema,type:z.enum(['pulse','confirm','finish','leave','hidden','visible'])}).strict().parse(req.body);return idempotent(db,req.account.id,b.key,'lesson:'+lessonId+':'+b.type,async tx=>{
   const lesson=(await tx.query('SELECT * FROM lessons WHERE id=$1 AND account_id=$2 FOR UPDATE',[lessonId,req.account.id])).rows[0];if(!lesson)fail('课程不存在',404);if(lesson.status!=='active')return {status:lesson.status,awarded:false}
   const now=Date.now(),sinceSeen=(now-new Date(lesson.last_seen).getTime())/1000,sinceConfirm=(now-new Date(lesson.confirmed_at).getTime())/1000
-  if(b.type==='leave'||sinceSeen>120){await tx.query("UPDATE lessons SET status='interrupted' WHERE id=$1",[lessonId]);return {status:'interrupted',awarded:false}}
+  if(b.type==='leave'||sinceSeen>120||(lesson.hidden_at&&now-new Date(lesson.hidden_at).getTime()>120000)){await tx.query("UPDATE lessons SET status='interrupted' WHERE id=$1",[lessonId]);return {status:'interrupted',awarded:false}}
+  if(lesson.hidden_at&&b.type!=='visible')return {status:'active',watched:lesson.watched_seconds,needsConfirm:true,hidden:true}
+  if(b.type==='visible'){await tx.query('UPDATE lessons SET hidden_at=NULL,last_seen=now() WHERE id=$1',[lessonId]);return {status:'active',watched:lesson.watched_seconds,needsConfirm:sinceConfirm>=300}}
+  if(b.type==='hidden')await tx.query('UPDATE lessons SET hidden_at=now() WHERE id=$1',[lessonId])
   // Credit only bounded, foreground intervals with a valid five-minute confirmation.
-  const watched=lesson.watched_seconds+(sinceSeen<=45&&sinceConfirm<=300&&b.type!=='visible'?Math.max(0,sinceSeen)*Number(lesson.speed):0)
+  const watched=lesson.watched_seconds+(sinceSeen<=45&&sinceConfirm<=300?Math.max(0,sinceSeen)*Number(lesson.speed):0)
   await tx.query('UPDATE lessons SET last_seen=now(),watched_seconds=$2,confirmed_at=CASE WHEN $3 THEN now() ELSE confirmed_at END WHERE id=$1',[lessonId,watched,b.type==='confirm'&&sinceConfirm>=295])
   if(b.type==='hidden') { // no pulses are accepted by the UI while hidden; next visible gap is discarded
    return {status:'active',watched,needsConfirm:sinceConfirm>=300}

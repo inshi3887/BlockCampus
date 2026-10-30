@@ -1,5 +1,5 @@
 <template>
-  <div v-if="ui.panel" class="overlay" @mousedown.self="close">
+  <div v-if="ui.panel && !['campus','classroom'].includes(ui.panel)" class="overlay" @mousedown.self="close">
     <!-- 地图 -->
     <div v-if="ui.panel === 'map'" class="mc-panel panel big">
       <div class="head"><span class="mc-title">🗺 广州地图</span><span class="muted">滚轮缩放 · 拖动平移 · 点击景点设置导航</span><button class="mc-btn small" @click="close">✕</button></div>
@@ -90,7 +90,8 @@
 
     <!-- 背包 -->
     <div v-else-if="ui.panel === 'bag'" class="mc-panel panel">
-      <div class="head"><span class="mc-title">🎒 背包</span><span>💰 ¥{{ store.save.money }}</span><button class="mc-btn small" @click="close">✕</button></div>
+      <div class="head"><span class="mc-title">🎒 背包</span><span v-if="account.guest">游客零钱 ¥{{ store.save.money }}</span><button class="mc-btn small" @click="close">✕</button></div>
+      <template v-if="!account.guest"><div class="muted sub">校园装扮</div><div class="slots"><button v-for="sku in account.economy?.inventory" :key="sku" class="mc-btn small" @click="equip(sku)">{{account.economy.catalog.find(i=>i.id===sku)?.name}} · 使用</button><p v-if="!account.economy?.inventory.length" class="muted">还没有装扮，上课升级可获得金币。</p></div></template>
       <div class="muted sub">纪念品</div>
       <div class="slots">
         <div v-for="(n, id) in store.save.items" :key="id" class="slot" :title="SOUVENIRS[id].name + '：' + SOUVENIRS[id].desc">
@@ -111,7 +112,8 @@
     <!-- 任务 -->
     <div v-else-if="ui.panel === 'tasks'" class="mc-panel panel">
       <div class="head"><span class="mc-title">📌 任务</span><button class="mc-btn small" @click="close">✕</button></div>
-      <div class="scroll tasklist">
+      <div v-if="!account.guest" class="scroll tasklist"><h3>校园成长</h3><p>完成一堂课：+10积分；升级自动发放金币。</p><p>拍照打卡：普通前20次/日、广告前5次/日有掉落。</p><p>升到5级：解锁校友名片，免费在装扮铺领取。</p><p>银铜可购买朋友圈木纹边框与校园贴纸。</p><p>服务端积分 {{account.economy?.points||0}} · 等级 {{account.economy?.level||1}}</p></div>
+      <div v-else class="scroll tasklist">
         <div class="muted sub">新手任务 · 广州初体验</div>
         <div v-for="(t, i) in NOVICE" :key="t.id" class="trow" :class="{ done: i < store.save.novice, cur: i === store.save.novice }">
           <span>{{ i < store.save.novice ? '☑' : '□' }}</span>
@@ -162,13 +164,13 @@
 
     <!-- 商店 -->
     <div v-else-if="ui.panel === 'shop' && ui.shop" class="mc-panel panel">
-      <div class="head"><span class="mc-title">🏮 {{ ui.shop.name }}</span><span>💰 ¥{{ store.save.money }}</span><button class="mc-btn small" @click="close">✕</button></div>
+      <div class="head"><span class="mc-title">🏮 {{ ui.shop.name }}</span><span v-if="account.guest">游客零钱 ¥{{ store.save.money }}</span><button class="mc-btn small" @click="close">✕</button></div>
       <div class="greet">“{{ ui.shop.greet }}”</div>
       <div class="shop">
         <div v-for="id in ui.shop.items" :key="id" class="sitem">
           <span class="si">{{ itemOf(id).icon }}</span>
           <div class="cb"><b>{{ itemOf(id).name }}</b><div class="muted small">{{ itemOf(id).desc }}</div></div>
-          <button class="mc-btn small primary" @click="G.game.buy(id)">¥{{ itemOf(id).price }} 购买</button>
+          <button v-if="account.guest" class="mc-btn small primary" @click="G.game.buy(id)">¥{{ itemOf(id).price }} 购买</button><span v-else class="muted">城市陈列</span>
           <span v-if="store.save.foods.includes(id) || store.save.items[id]" class="have">✔</span>
         </div>
       </div>
@@ -207,6 +209,8 @@
 </template>
 
 <script setup>
+import {account} from '../campus/session.js'
+import {equip} from '../campus/cosmetics.js'
 import { ref, computed, watch, nextTick } from 'vue'
 import { store, condProgress, dailyProgress, persist } from '../game/store.js'
 import { G } from '../game/instance.js'

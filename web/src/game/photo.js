@@ -1,3 +1,4 @@
+import {account} from '../campus/session.js'
 // 摄影系统：滤镜后期、拍照、景点识别、相册存储（IndexedDB）
 import * as THREE from 'three'
 
@@ -154,6 +155,8 @@ export class PhotoSystem {
       const w = g.measureText(right).width
       g.fillText(right, c.width - w - 24, c.height - 26)
     }
+    if(document.documentElement.dataset.photoFrame==='campus'){g.strokeStyle='#e7cf86';g.lineWidth=22;g.strokeRect(11,11,c.width-22,c.height-22)}
+    if(document.documentElement.dataset.sticker==='silver'){g.fillStyle='#e2e8ec';g.font='bold 38px sans-serif';g.fillText('✧ GDUT',32,60)}
     const full = c.toDataURL('image/jpeg', 0.88)
     const t = document.createElement('canvas')
     t.width = 320
@@ -164,7 +167,7 @@ export class PhotoSystem {
   db() {
     if (this.dbp) return this.dbp
     this.dbp = new Promise((res, rej) => {
-      const req = indexedDB.open('block-guangzhou', 1)
+      const req = indexedDB.open(account.user&&!account.guest?'block-campus-photos-'+account.user.id:'block-guangzhou', 1)
       req.onupgradeneeded = () => req.result.createObjectStore('photos', { keyPath: 'id' })
       req.onsuccess = () => res(req.result)
       req.onerror = () => rej(req.error)

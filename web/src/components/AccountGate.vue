@@ -6,14 +6,14 @@
 <script setup>
 import {ref,onMounted} from 'vue'
 import {account,api,logout} from '../campus/session.js'
-import {store,activateAccountSave} from '../game/store.js'
+import {store,activateAccountSave,activateGuestSave} from '../game/store.js'
 const emit=defineEmits(['ready']),register=ref(false),username=ref(''),password=ref(''),phone=ref(''),name=ref(''),identity=ref(''),busy=ref(false),error=ref('')
 async function run(fn){busy.value=true;error.value='';try{await fn()}catch(e){error.value=e.message}finally{busy.value=false;password.value='';identity.value=''}}
 async function state(){account.user=await api('/auth/me');account.identity=await api('/identity')}
 function submit(){run(async()=>{await api(register.value?'/auth/register':'/auth/login',{username:username.value,password:password.value,...register.value?{phone:phone.value}:{}});await state()})}
 function verify(){run(async()=>{account.identity=await api('/identity',{name:name.value,identity:identity.value.toUpperCase()});name.value=''})}
 function enter(){run(async()=>{await activateAccountSave();emit('ready')})}
-function guest(){account.guest=true;emit('ready')}
+function guest(){run(async()=>{if(account.user)await api('/auth/logout',{});account.user=null;account.guest=true;activateGuestSave();emit('ready')})}
 onMounted(()=>run(async()=>{try{await state()}catch(e){if(e.status!==401)throw e}}))
 </script>
 <style scoped>

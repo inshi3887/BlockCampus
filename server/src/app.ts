@@ -8,6 +8,7 @@ import {saveModule} from './saves.js'
 import {economyModule} from './economy.js'
 import {contentModule} from './content.js'
 import {adsModule} from './ads.js'
+import {progressModule} from './progress.js'
 export interface Cache { get(k:string):Promise<string|null>; set(k:string,v:string,opts?:any):Promise<any>; del(k:string):Promise<any>; incr(k:string):Promise<number>; expire(k:string,s:number):Promise<any> }
 export function createApp(db: DB, cache: Cache) {
  const app = Fastify({logger: process.env.NODE_ENV !== 'test', bodyLimit: 6*1024*1024})
@@ -28,6 +29,7 @@ export function createApp(db: DB, cache: Cache) {
  economyModule(app,db,play)
  contentModule(app,db,play,auth)
  adsModule(app,db,play,auth)
+ progressModule(app,db,play)
  return app
 }
 export function fail(message:string,statusCode=400):never { throw Object.assign(new Error(message),{statusCode}) }

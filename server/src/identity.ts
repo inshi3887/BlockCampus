@@ -24,7 +24,7 @@ export function identityModule(app:FastifyInstance,db:DB,auth:any) {
   await tx.query('INSERT INTO play_days(account_id,day) VALUES($1,$2) ON CONFLICT DO NOTHING',[id,day])
   const p=(await tx.query('SELECT * FROM play_days WHERE account_id=$1 AND day=$2 FOR UPDATE',[id,day])).rows[0]
   let seconds=p.seconds
-  if(tick) {seconds+=p.last_seen?Math.min(60,Math.max(0,Math.ceil((Date.now()-new Date(p.last_seen).getTime())/1000))):0;await tx.query('UPDATE play_days SET seconds=$3,last_seen=now() WHERE account_id=$1 AND day=$2',[id,day,seconds])}
+  if(tick) {const elapsed=p.last_seen?Math.max(0,(Date.now()-new Date(p.last_seen).getTime())/1000):0;const delta=Math.min(60,Math.floor(elapsed));seconds+=delta;const cursor=!p.last_seen||elapsed>60?new Date():new Date(new Date(p.last_seen).getTime()+delta*1000);await tx.query('UPDATE play_days SET seconds=$3,last_seen=$4 WHERE account_id=$1 AND day=$2',[id,day,seconds,cursor])}
   return {verified:true,allowed:allowed(identity.birth_date,seconds),seconds,provider:'self-hosted-placeholder'}
  })
  app.post('/api/identity',{preHandler:auth},async req=>{

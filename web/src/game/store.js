@@ -78,18 +78,20 @@ export function persist() {
 }
 
 let cloudWriting=false,cloudDirty=false
-export async function activateAccountSave(){const s=await api('/save');account.saveVersion=s.version;Object.assign(store.save,defaultSave(),s.data);store.save.money=0}
+export function activateGuestSave(){clearTimeout(saveTimer);Object.assign(store.save,defaultSave(),load());account.photo=null}
+export async function activateAccountSave(){clearTimeout(saveTimer);const s=await api('/save');const progress=await api('/progress');account.saveVersion=s.version;Object.assign(store.save,defaultSave(),s.data,progress);store.save.money=0}
 export async function saveCloud(){
  if(account.guest||!account.user)return
  if(cloudWriting){cloudDirty=true;return}
  cloudWriting=true
- try {const s=store.save;const data={lastPos:s.lastPos,settings:s.settings};if(s.profile)data.profile={name:s.profile.name,gender:s.profile.gender||'m',skinParams:{gender:s.profile.gender||'m',seed:s.profile.skinParams?.seed||1}}
+ try {const s=store.save;const data={lastPos:s.lastPos,settings:s.settings};if(s.profile)data.profile={name:s.profile.name,gender:s.profile.gender||'m',skinParams:{...s.profile.skinParams,gender:s.profile.gender||'m',seed:s.profile.skinParams?.seed||1},customSkin:s.profile.customSkin||null}
  const r=await api('/save',{version:account.saveVersion,schema_version:1,data},'PUT');account.saveVersion=r.version;account.saveError=''
  }catch(e){account.saveError=e.message;if(e.status===409){const remote=await api('/save');account.saveVersion=remote.version;Object.assign(store.save,remote.data);cloudDirty=false}}
  finally{cloudWriting=false;if(cloudDirty){cloudDirty=false;saveCloud()}}
 }
 
 export function resetSave() {
+  if(account.user&&!account.guest)return
   localStorage.removeItem(SAVE_KEY)
   Object.assign(store.save, defaultSave())
 }

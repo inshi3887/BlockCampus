@@ -14,6 +14,7 @@ export function authModule(app:FastifyInstance,db:DB,cache:Cache) {
  async function issue(id:string,reply:FastifyReply) {const token=randomBytes(32).toString('hex');await cache.set(tokenKey(token),id,{EX:86400});reply.setCookie('campus_session',token,{httpOnly:true,sameSite:'strict',secure:process.env.COOKIE_SECURE==='true',path:'/',maxAge:86400});return {id}}
  app.post('/api/auth/register',async(req,reply)=>{
   const b=schema.parse(req.body);const id=randomUUID()
+  if((process.env.ADMIN_ACCOUNTS||'').split(',').includes(b.username))fail('该账号名由运营人员预留',403)
   try {await db.query('INSERT INTO accounts(id,username,phone,password_hash) VALUES($1,$2,$3,$4)',[id,b.username,b.phone,await hashPassword(b.password)])} catch(e:any){if(e.code==='23505') fail('账号或手机号已注册',409);throw e}
   return issue(id,reply)
  })
@@ -26,7 +27,7 @@ export function authModule(app:FastifyInstance,db:DB,cache:Cache) {
   if(!await verifyPassword(b.password,hash)||!user)fail('账号或密码错误',401)
   await cache.del(key); return issue(user.id,reply)
  })
- const auth=async(req:FastifyRequest)=>{const token=req.cookies.campus_session;if(!token)fail('请先登录',401);const id=await cache.get(tokenKey(token));if(!id)fail('会话已过期',401);req.account=(await db.query('SELECT id,username FROM accounts WHERE id=$1',[id])).rows[0];if(!req.account)fail('账号不存在',401)}
+ const auth=async(req:FastifyRequest)=>{const token=req.cookies.campus_session;if(!token)fail('请先登录',401);const id=await cache.get(tokenKey(token));if(!id)fail('会话已过期',401);if(req.headers['x-campus-account']&&req.headers['x-campus-account']!==id)fail('会话账号已切换，请重新进入',401);req.account=(await db.query('SELECT id,username FROM accounts WHERE id=$1',[id])).rows[0];if(!req.account)fail('账号不存在',401)}
  app.get('/api/auth/me',{preHandler:auth},async req=>req.account)
  app.post('/api/auth/logout',async(req,reply)=>{if(req.cookies.campus_session)await cache.del(tokenKey(req.cookies.campus_session));reply.clearCookie('campus_session',{path:'/'});return {ok:true}})
  return auth

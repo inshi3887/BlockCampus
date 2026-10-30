@@ -1,4 +1,4 @@
-import {account} from '../campus/session.js'
+import {account,api} from '../campus/session.js'
 import {recordPhoto} from '../campus/checkins.js'
 // 游戏主控：渲染循环、系统调度、交互逻辑
 import * as THREE from 'three'
@@ -192,6 +192,7 @@ export class Game {
     await this.preload(x, z, onProgress)
     this.player.pos.y = Math.max(this.player.groundAt(x, z, y + 3), y)
     this.lastDistrict = null
+    store.save.lastPos={x:this.player.pos.x,y:this.player.pos.y,z:this.player.pos.z,yaw:this.player.camYaw};persist()
   }
   async preload(x, z, onProgress) {
     const frame = () => new Promise((r) => setTimeout(r, 0))
@@ -239,6 +240,10 @@ export class Game {
   }
   frame() {
     const dt = Math.min(0.05, this.clock.getDelta())
+    const frameNow=performance.now()
+    if(this.perfLast){this.perfFrames.push(frameNow-this.perfLast);if(this.perfFrames.length>120)this.perfFrames.shift()}
+    else this.perfFrames=[]
+    this.perfLast=frameNow
     this.time += dt
     const ui = store.ui
     const blocking = !!ui.panel || !!ui.dialog || ui.fade
@@ -317,12 +322,16 @@ export class Game {
     h.district = DISTRICTS[d] ? DISTRICTS[d].name : ''
     const lm = this.landmarks.nearest(p.pos.x, p.pos.z, 160)
     h.place = lm ? lm.def.name : ''
+    if(lm?.def.id.startsWith('school:')&&Math.hypot(lm.x-p.pos.x,lm.z-p.pos.z)<200)h.district='广东工业大学 · 大学城'
     h.time = formatTime(this.sky.hour)
     h.period = this.sky.period
     h.weather = this.sky.weather
     h.weatherName = WEATHERS[this.sky.weather].name
     h.weatherIcon = this.sky.night > 0.5 && this.sky.weather === 'sunny' ? '🌙' : WEATHERS[this.sky.weather].icon
-    h.fps = Math.round(1 / Math.max(0.001, dt))
+    h.fps = this.perfFrames?.length?Math.round(1000/(this.perfFrames.reduce((a,b)=>a+b,0)/this.perfFrames.length)):0
+    h.frameP95=this.perfFrames?.length?[...this.perfFrames].sort((a,b)=>a-b)[Math.floor(this.perfFrames.length*.95)].toFixed(1):'0'
+    h.drawCalls=this.renderer.info.render.calls
+    h.triangles=this.renderer.info.render.triangles
     h.heading = this.player.camYaw
     h.x = p.pos.x
     h.z = p.pos.z
@@ -391,7 +400,9 @@ export class Game {
   onKey(code) {
     const ui = store.ui
     if (ui.screen !== 'game') return
+    if(account.lesson)return
     if (code === 'Escape') {
+      account.tab=null
       if (ui.dialog) this.closeDialog()
       else if (ui.panel) ui.panel = null
       else if (ui.photoMode) this.togglePhoto(false)

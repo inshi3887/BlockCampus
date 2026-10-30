@@ -17,6 +17,7 @@ export function contentModule(app:FastifyInstance,db:DB,play:any,auth:any) {
    if(blocked(b.body))fail('内容含敏感词，请修改')
    if(b.uploadId&&!(await tx.query('SELECT 1 FROM uploads WHERE id=$1 AND account_id=$2',[b.uploadId,req.account.id])).rows.length)fail('图片不存在')
    if(b.photoEvent&&(!b.uploadId||!(await tx.query('SELECT 1 FROM photo_events WHERE id=$1 AND account_id=$2',[b.photoEvent,req.account.id])).rows.length))fail('打卡必须绑定本人照片与拍照事件')
+   if(b.photoEvent){const e=(await tx.query('SELECT * FROM photo_events WHERE id=$1 AND account_id=$2 FOR UPDATE',[b.photoEvent,req.account.id])).rows[0];if(e.upload_id&&e.upload_id!==b.uploadId)fail('该拍照事件已绑定其他图片',409);await tx.query('UPDATE photo_events SET upload_id=$2 WHERE id=$1',[b.photoEvent,b.uploadId]);if(b.adSlot){const campaign=(await tx.query('SELECT slot FROM ads WHERE id=$1',[e.campaign_id])).rows[0];if(campaign?.slot!==b.adSlot)fail('该照片不属于有效广告活动')}}
    const id=randomUUID();await tx.query('INSERT INTO posts(id,account_id,channel,body,upload_id,photo_event,ad_slot) VALUES($1,$2,$3,$4,$5,$6,$7)',[id,req.account.id,b.channel,b.body,b.uploadId||null,b.photoEvent||null,b.adSlot||null]);return {id,status:'pending'}
   })
  })
@@ -34,7 +35,7 @@ export function contentModule(app:FastifyInstance,db:DB,play:any,auth:any) {
   const decision=b.approved?'approved':'rejected';await tx.query('UPDATE posts SET status=$2 WHERE id=$1',[id,decision]);if(p.upload_id)await tx.query('UPDATE uploads SET status=$2 WHERE id=$1',[p.upload_id,decision]);await tx.query('INSERT INTO moderation_log(operator_id,target,decision) VALUES($1,$2,$3)',[req.account.id,id,decision])
   let settlement=null
   if(b.approved&&p.ad_slot&&p.photo_event) {
-   const eligible=(await tx.query('SELECT 1 FROM ads a JOIN photo_events e ON e.landmark=a.landmark WHERE a.slot=$1 AND e.id=$2 AND a.active=true AND e.created_at BETWEEN a.starts_at AND a.ends_at',[p.ad_slot,p.photo_event])).rows.length
+   const eligible=(await tx.query('SELECT 1 FROM ads a JOIN photo_events e ON e.campaign_id=a.id WHERE a.slot=$1 AND e.id=$2 AND e.created_at BETWEEN a.starts_at AND a.ends_at',[p.ad_slot,p.photo_event])).rows.length
    if(eligible)settlement=await settlePhoto(tx,p.account_id,p.photo_event,'ad')
   }
   return {ok:true,settlement}

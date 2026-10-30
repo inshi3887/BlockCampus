@@ -36,13 +36,13 @@
     <div v-if="step === 'menu'" class="center">
       <div class="logo">
         <div class="big">方块校园</div>
-        <div class="sub">BLOCK CAMPUS · 广州城市观光模拟器</div>
+        <div class="sub">BLOCK CAMPUS · 校园与城市探索</div>
       </div>
       <div class="col">
         <button v-if="hasProfile" class="mc-btn primary wide" @click="step = 'spawn'">▶ 继续旅行（{{ store.save.profile.name }}）</button>
         <button class="mc-btn wide" :class="{ primary: !hasProfile }" @click="newChar">{{ hasProfile ? '✎ 修改角色' : '▶ 开始游戏' }}</button>
         <button class="mc-btn wide" @click="showHelp = !showHelp">❓ 操作说明</button>
-        <button v-if="hasProfile" class="mc-btn wide small" @click="reset">🗑 清除存档</button>
+        <button v-if="hasProfile && account.guest" class="mc-btn wide small" @click="reset">🗑 清除存档</button>
       </div>
       <div v-if="showHelp" class="mc-panel help">
         <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动 · 鼠标 旋转视角（点击画面锁定鼠标）· <kbd>Shift</kbd> 奔跑 · <kbd>空格</kbd> 跳跃</p>
@@ -59,7 +59,7 @@
       <div class="create-body">
         <div class="preview" ref="previewEl"></div>
         <div class="form scroll">
-          <label>名字 <input v-model="name" maxlength="10" placeholder="羊城旅行家" /></label>
+          <label>名字 <input v-model="name" maxlength="10" placeholder="校园新同学" /></label>
           <div class="row">
             <span>性别</span>
             <button class="mc-btn small" :class="{ active: p.gender === 'm' }" @click="p.gender = 'm'">男</button>
@@ -113,6 +113,7 @@
 </template>
 
 <script setup>
+import {account} from '../campus/session.js'
 import { ref, reactive, computed, watch, onBeforeUnmount, nextTick } from 'vue'
 import * as THREE from 'three'
 import { store, persist, resetSave } from '../game/store.js'

@@ -69,3 +69,23 @@
 - 仅拉有效广告，场景静态灯箱纹理，保留广告标识，不强制弹窗；独立运营端上线后一分钟内刷新。
 - 每广告/人/日曝光点击去重；广告照片发布绑定event，审核通过由服务端补发，最多5次。
 - 旧材质/几何/纹理在下线与卸载时释放；npm run build。
+
+## F08 存档隔离、联调与性能回归
+- 老档只用于游客，账号照片独立IndexedDB；云档保存角色外观/设置/位置，图鉴从服务端恢复；拒绝跨账号会话写入。
+- 修复账号→游客切换、后台课程心跳、课程离座位置、广告不叠加普通奖励、广告活动快照与审核补发、运营账号预置。
+- 50个景点使用统一注册表生成服务端坐标（含岸边吸附），npm run check:places 通过。
+- npm test：9项通过，集成84个API请求；npm run test:storage：1项通过；npm run build：TypeScript/Vite通过；git diff --check 通过。
+- 浏览器实测：账号/游客隔离、角色跨会话恢复、校园渲染、商店五级锁、50席课堂/离座中断、论坛待审、独立运营端权限提示。
+- 性能未验收：当前内嵌浏览器原版广州塔与校园均约1FPS；保留HUD FPS/P95/calls，明确需要目标GPU复测，不宣称已达60FPS。
+- 整栈限制：本机无Docker/原生PG/Redis/MinIO；SQL使用PGlite，S3使用HTTP协议桩。CI已配置真实PG/Redis，远端CI尚未运行。
+- 启动与环境说明：README.md；完整证据：docs/VALIDATION.md。
+
+## 最终验证对应模块
+| 模块 | 运行/验证命令 | 结果 |
+| --- | --- | --- |
+| B01 | npm run build；npm run check:places | 通过；Compose未在本机运行 |
+| B02–B04 | npm test | 密码/会话/实名时段/云档注入与版本冲突通过 |
+| B05 | npm test | GDD数值、事务并发、幂等、上限、课堂时间边界通过 |
+| B06–B07 | npm test；npm run test:storage | 内容权限/审核/补发与S3协议通过；真实MinIO待复测 |
+| F01–F07 | npm run build；浏览器QA | 页面与核心交互通过；图片上传全链需真实S3复测 |
+| F08 | npm test；npm run test:storage；npm run check:places；npm run build | 通过；目标硬件60FPS与整栈部署待验收 |

@@ -9,7 +9,7 @@
     <AdPanel v-if="authorized" />
     <div v-if="loading" class="loading">
       <div class="mc-panel load-box">
-        <div class="mc-title">方块羊城</div>
+        <div class="mc-title">方块校园</div>
         <div class="load-text">{{ loadText }}</div>
         <div class="bar"><div class="fill" :style="{ width: (progress * 100).toFixed(0) + '%' }"></div></div>
         <div class="muted tip">{{ tip }}</div>
@@ -19,14 +19,15 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick,onMounted,onBeforeUnmount } from 'vue'
+import {account,api} from './campus/session.js'
 import AccountGate from './components/AccountGate.vue'
 import CampusHUD from './components/CampusHUD.vue'
 import Classroom from './components/Classroom.vue'
 import SocialPanel from './components/SocialPanel.vue'
 import AdPanel from './components/AdPanel.vue'
 import './campus/cosmetics.js'
-import { store } from './game/store.js'
+import { store,toast } from './game/store.js'
 import Menu from './components/Menu.vue'
 import GameView from './components/GameView.vue'
 
@@ -46,7 +47,11 @@ const TIPS = [
 ]
 const tip = ref(TIPS[0])
 
+function blocked(){authorized.value=false;gameMounted.value=false}
+onMounted(()=>window.addEventListener('campus:blocked',blocked))
+onBeforeUnmount(()=>window.removeEventListener('campus:blocked',blocked))
 async function startGame(spawn) {
+  if(!account.guest){try{account.identity=await api('/play/heartbeat',{});if(!account.identity.allowed){blocked();return}}catch{blocked();return}}
   loading.value = true
   progress.value = 0
   tip.value = TIPS[Math.floor(Math.random() * TIPS.length)]
@@ -56,13 +61,14 @@ async function startGame(spawn) {
     gameMounted.value = true
     await nextTick()
   }
+  try {
   await gv.value.boot(spawn, (p, t) => {
     progress.value = p
     if (t) loadText.value = t
   })
   progress.value = 1
   store.ui.screen = 'game'
-  loading.value = false
+  }catch(e){store.ui.screen='menu';toast('场景初始化失败：'+e.message,'warn');window.alert('场景初始化失败：'+e.message)}finally{loading.value=false}
 }
 </script>
 

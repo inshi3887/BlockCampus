@@ -20,4 +20,7 @@ jobs:
       - run: cp .env.example .env
       - run: npm run migrate
       - run: npm test
+        env: {DATABASE_URL: "postgres://campus:campus@127.0.0.1:5432/campus", REDIS_URL: "redis://127.0.0.1:6379"}
+      - run: npm run test:storage
+      - run: npm run check:places
       - run: npm run build

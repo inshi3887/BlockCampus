@@ -55,3 +55,5 @@ input, textarea { font-family: inherit; user-select: text; }
 .tag { display: inline-block; padding: 1px 6px; font-size: 12px; border: 1px solid #000; background: #444; margin-right: 4px; }
 .tag.S { background: #c8282a; } .tag.A { background: #d88a20; } .tag.B { background: #3a7ad0; }
 kbd { display: inline-block; min-width: 22px; padding: 1px 5px; border: 2px solid #111; background: #ddd; color: #111; font-weight: 800; font-size: 12px; text-align: center; box-shadow: inset -2px -2px 0 #999; font-family: inherit; }
+
+html[data-profile-frame="copper-border"] .wallet{border-color:#b38962} html[data-profile-frame="profile5"] .wallet{border-color:#dfc578;box-shadow:0 0 0 3px #896d3a}

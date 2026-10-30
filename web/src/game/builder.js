@@ -329,6 +329,9 @@ export class Builder {
 }
 
 export function disposeGroup(g) {
+  const owned=new Set()
+  g.traverse(o=>{if(o.userData.campusOwned)o.traverse(part=>{if(part.material)for(const mat of Array.isArray(part.material)?part.material:[part.material])owned.add(mat)})})
+  for(const mat of owned){mat.map?.dispose();mat.dispose()}
   g.traverse((o) => {
     if (o.geometry) o.geometry.dispose()
   })

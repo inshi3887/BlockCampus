@@ -8,7 +8,7 @@ let publishKey=eventKey(),uploadId=null,uploadPhoto=null
 function close(){account.tab=null;store.ui.panel=null}
 async function load(){if(account.guest){error.value='游客不能参与社交';return}try{posts.value=await api('/posts?channel='+channel.value);await refreshEconomy()}catch(e){error.value=e.message}}
 async function publish(){busy.value=true;try{error.value='';let photo=attach.value?account.photo:null;if(photo&&(!uploadId||uploadPhoto!==photo.id)){const blob=await (await fetch(photo.full)).blob();const fd=new FormData();fd.append('file',blob,'campus.jpg');uploadId=(await api('/uploads',fd)).id;uploadPhoto=photo.id}
- const payload={key:publishKey,channel:channel.value,body:body.value};if(photo){payload.uploadId=uploadId;if(photo.eventId){payload.photoEvent=photo.eventId;payload.adSlot=account.ads.find(a=>a.landmark===photo.landmark)?.slot}}
+ const payload={key:publishKey,channel:channel.value,body:body.value};if(photo){payload.uploadId=uploadId;if(photo.eventId){payload.photoEvent=photo.eventId;payload.adSlot=photo.adSlot||undefined}}
  await api('/posts',payload);publishKey=eventKey();body.value='';attach.value=false;toast('已提交审核，审核通过后展示与结算');await load()
  }catch(e){error.value=e.message}finally{busy.value=false}}
 async function like(p){try{await api('/posts/'+p.id+'/like',{});await load()}catch(e){error.value=e.message}}
