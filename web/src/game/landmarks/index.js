@@ -5,6 +5,7 @@ import { buildYuexiuPark, buildWuyang, buildMemorialHall, buildBeijingRoad, buil
 import { buildHuacheng, buildIFC, ifcLOD, buildCTF, ctfLOD, buildOperaHouse, buildGDMuseum, buildSportsCenter, buildGrandview, buildTaikoo, buildCitic, citicLOD, buildEastStation, buildCBD } from './tianhe.js'
 import { buildMoxingling, buildBaiyunGate, buildYuntai, buildChimelong, buildSafari, buildDafushan, buildWetland, buildSeaside, buildTinHau } from './outer.js'
 import { C, railing, lamp } from './common.js'
+import {SCHOOL_LANDMARKS} from './school/gdut.js'
 
 function buildTowerPier(b, ctx) {
   // 广州塔码头（南岸，局部 +z 指向江面）
@@ -24,6 +25,7 @@ function buildTowerPier(b, ctx) {
 // grade: S 高度还原 / A 主要建筑 / B 区域氛围
 // excl: 城市程序化建筑避让半径；rect: [半宽, 半深]
 export const LANDMARKS = [
+  ...SCHOOL_LANDMARKS,
   // ---------- 海珠区 ----------
   { id: 'cantontower', name: '广州塔', alias: '小蛮腰', district: 'haizhu', grade: 'S', lat: 23.1066, lon: 113.3245, rect: [46, 42], focusY: 120, photoR: 1600, lod: towerLOD, lodAlways: true, loadR: 900, build: buildCantonTower,
     desc: '广州塔高600米，2010年建成，是中国第一、世界第三高的电视塔。塔身由24根钢柱与46组环梁构成，底部与顶部椭圆相对扭转135°，形成纤细的“小蛮腰”。夜晚LED灯光秀与珠江倒影交相辉映。', tip: '乘坐电梯登上488米露天观景平台俯瞰广州；夜晚观看灯光秀。' },

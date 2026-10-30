@@ -21,6 +21,7 @@ import { formatTime, smooth, lerp, clamp } from './util.js'
 import { renderBaseMap } from './map.js'
 
 export const SPAWNS = [
+  {id:'school:gdut',name:'广东工业大学',desc:'校园 · 从这里开始大学生活',lm:'school:gdut',off:[0,.5,17],yaw:0},
   { id: 'cantontower', name: '广州塔', desc: '海珠区 · 小蛮腰脚下', lm: 'cantontower', off: [0, 0, 27], yaw: 0 },
   { id: 'huacheng', name: '珠江新城·花城广场', desc: '天河区 · 城市中轴线', lm: 'huacheng', off: [0, 0, -30], yaw: Math.PI },
   { id: 'beijingroad', name: '北京路', desc: '越秀区 · 千年古道', lm: 'beijingroad', off: [0, 0, 50], yaw: 0 },
@@ -498,6 +499,13 @@ export class Game {
     }
     const t = this.currentInteract
     if (!t) return
+    if(t.it?.type?.startsWith('campus-')) {
+      const action=t.it
+      this.input.exitLock()
+      if(action.type==='campus-bus'){this.spawnAt(SPAWNS.find(s=>s.id==='cantontower'));return}
+      account.tab=action.type==='campus-classroom'?'classroom':action.type==='campus-shop'?'shop':'ads'
+      account.adSlot=action.slot;store.ui.panel='campus';return
+    }
     if (t.npc) return this.talkNPC(t.npc)
     const it = t.it
     switch (it.type) {
