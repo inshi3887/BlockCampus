@@ -1,4 +1,4 @@
-# 方块校园 · MVP 阶段一
+# BlockCampus（方块校园）· MVP 阶段一
 
 Vue 3 + Three.js 单机渲染，Node 24 + TypeScript 模块化单体，PostgreSQL / Redis / S3。新增项目独立于 `../guangzhou`，原蓝本没有修改。设计以 `../docs/方块校园-完整策划案.md` v1.4 为准。
 
@@ -11,7 +11,7 @@ Vue 3 + Three.js 单机渲染，Node 24 + TypeScript 模块化单体，PostgreSQ
 在 PowerShell 中：
 
 ```powershell
-Set-Location D:\wsl\Ubuntu\items\game\campus
+Set-Location D:\wsl\Ubuntu\items\game\BlockCampus
 npm ci
 Copy-Item .env.example .env
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
@@ -25,7 +25,7 @@ npm run dev
 另一个终端：
 
 ```powershell
-Set-Location D:\wsl\Ubuntu\items\game\campus
+Set-Location D:\wsl\Ubuntu\items\game\BlockCampus
 npm run dev:web
 ```
 
