@@ -1,4 +1,5 @@
 import {account} from '../campus/session.js'
+import {recordPhoto} from '../campus/checkins.js'
 // 游戏主控：渲染循环、系统调度、交互逻辑
 import * as THREE from 'three'
 import { CollisionWorld } from './physics.js'
@@ -468,6 +469,7 @@ export class Game {
     store.ui.flash = true
     setTimeout(() => (store.ui.flash = false), 180)
     const rec = { id: Date.now(), full: img.full, thumb: img.thumb, title, sub, landmarks: found.map((f) => f.def.id), filter: req.filter, view: req.view, night, district: d.name }
+    recordPhoto(rec,p.pos)
     this.photo.savePhoto(rec)
     store.ui.lastPhoto = { thumb: img.thumb, title }
     setTimeout(() => {
