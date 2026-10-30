@@ -2,6 +2,7 @@
 import { reactive } from 'vue'
 import { NOVICE, QUESTS, DAILY_POOL, FOODS, CULTURE, SOUVENIRS } from './data.js'
 import { mulberry32, todayKey } from './util.js'
+import {account,api} from '../campus/session.js'
 
 const SAVE_KEY = 'block-guangzhou-save-v1'
 
@@ -68,11 +69,24 @@ export const store = reactive({
 let saveTimer = null
 export function persist() {
   clearTimeout(saveTimer)
+  if(account.user&&!account.guest){saveTimer=setTimeout(saveCloud,800);return}
   saveTimer = setTimeout(() => {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(store.save))
     } catch (e) {}
   }, 300)
+}
+
+let cloudWriting=false,cloudDirty=false
+export async function activateAccountSave(){const s=await api('/save');account.saveVersion=s.version;Object.assign(store.save,defaultSave(),s.data);store.save.money=0}
+export async function saveCloud(){
+ if(account.guest||!account.user)return
+ if(cloudWriting){cloudDirty=true;return}
+ cloudWriting=true
+ try {const s=store.save;const data={lastPos:s.lastPos,settings:s.settings};if(s.profile)data.profile={name:s.profile.name,gender:s.profile.gender||'m',skinParams:{gender:s.profile.gender||'m',seed:s.profile.skinParams?.seed||1}}
+ const r=await api('/save',{version:account.saveVersion,schema_version:1,data},'PUT');account.saveVersion=r.version;account.saveError=''
+ }catch(e){account.saveError=e.message;if(e.status===409){const remote=await api('/save');account.saveVersion=remote.version;Object.assign(store.save,remote.data);cloudDirty=false}}
+ finally{cloudWriting=false;if(cloudDirty){cloudDirty=false;saveCloud()}}
 }
 
 export function resetSave() {
@@ -115,6 +129,7 @@ export function ensureDaily() {
 }
 
 function grant(reward, title) {
+  if(account.user&&!account.guest)return
   if (!reward) return
   if (reward.money) store.save.money += reward.money
   if (reward.item) addItem(reward.item)
@@ -122,6 +137,7 @@ function grant(reward, title) {
 }
 
 export function addItem(id, n = 1) {
+  if(account.user&&!account.guest)return
   const had = store.save.items[id] || 0
   store.save.items[id] = had + n
   if (!had) toast(`获得纪念品：${SOUVENIRS[id].icon} ${SOUVENIRS[id].name}`, 'item')
@@ -174,6 +190,7 @@ export function dailyProgress(t) {
 }
 
 export function checkTasks() {
+  if(account.user&&!account.guest)return
   const s = store.save
   // 新手链
   while (s.novice < NOVICE.length && condMet(NOVICE[s.novice].cond)) {
@@ -231,6 +248,7 @@ export const events = {
     return fresh
   },
   buy(id, price) {
+    if(account.user&&!account.guest)return false
     const s = store.save
     if (s.money < price) return false
     s.money -= price

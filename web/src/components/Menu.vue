@@ -35,8 +35,8 @@
     <!-- 主菜单 -->
     <div v-if="step === 'menu'" class="center">
       <div class="logo">
-        <div class="big">方块羊城</div>
-        <div class="sub">BLOCK GUANGZHOU · 广州城市观光模拟器</div>
+        <div class="big">方块校园</div>
+        <div class="sub">BLOCK CAMPUS · 广州城市观光模拟器</div>
       </div>
       <div class="col">
         <button v-if="hasProfile" class="mc-btn primary wide" @click="step = 'spawn'">▶ 继续旅行（{{ store.save.profile.name }}）</button>

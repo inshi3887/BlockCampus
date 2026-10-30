@@ -1,6 +1,7 @@
 <template>
   <div class="app">
-    <Menu v-if="store.ui.screen !== 'game'" @start="startGame" />
+    <AccountGate v-if="!authorized" @ready="authorized=true" />
+    <Menu v-else-if="store.ui.screen !== 'game'" @start="startGame" />
     <GameView v-if="gameMounted" v-show="store.ui.screen === 'game'" ref="gv" />
     <div v-if="loading" class="loading">
       <div class="mc-panel load-box">
@@ -15,11 +16,13 @@
 
 <script setup>
 import { ref, nextTick } from 'vue'
+import AccountGate from './components/AccountGate.vue'
 import { store } from './game/store.js'
 import Menu from './components/Menu.vue'
 import GameView from './components/GameView.vue'
 
 const gameMounted = ref(false)
+const authorized=ref(false)
 const loading = ref(false)
 const progress = ref(0)
 const loadText = ref('')
