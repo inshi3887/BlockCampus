@@ -7,3 +7,7 @@
 - PostgreSQL 事务迁移、Redis 连接、S3 环境、Compose、CI。
 - 运行：`npm install`；`docker compose up -d`；复制 `.env.example`；`npm run migrate`；`npm run dev` / `npm run dev:web`。
 - 本机 Node 24.12.0；Docker 不可用，容器启动尚未验证。
+
+## B02 账号鉴权
+- 账号/手机号唯一、scrypt、HttpOnly Cookie、Redis 会话与登录限流、退出撤销。
+- 验证：npm test（密码正反例与 token 哈希）；后续集成测试覆盖注册/会话。
