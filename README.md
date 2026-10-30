@@ -29,7 +29,7 @@ Set-Location D:\wsl\Ubuntu\items\game\BlockCampus
 npm run dev:web
 ```
 
-打开 [游戏](http://127.0.0.1:5173/)；[运营端](http://127.0.0.1:5173/admin.html)。请使用 `127.0.0.1`，与 `APP_ORIGIN` 保持完全一致。端口占用时修改 `APP_ORIGIN` 和 Vite 端口，或关闭占用程序。Vite 的 `/api` 代理到 `127.0.0.1:3001`。
+打开 [游戏](http://127.0.0.1:5173/)；[运营端](http://127.0.0.1:5173/admin.html)。**访问地址必须与 `APP_ORIGIN` 或 `APP_ALLOWED_ORIGINS` 中某一完整源完全一致（协议、主机名、端口；无结尾斜杠）。** 默认允许 `http://127.0.0.1:5173` 和 `http://localhost:5173`。端口变更时同步修改这些配置和 Vite 端口。显式 Origin 不在白名单（含 `null`）会被拒绝；缺失 Origin 时允许同源/无 Fetch Metadata 的反代与 CLI 请求，拒绝 Fetch Metadata 表明的跨源请求。会话 Cookie 保持 `SameSite=Strict`，反代应保留 Origin/Fetch Metadata；生产白名单只配置可信源。Vite 的 `/api` 代理到 `127.0.0.1:3001`。
 
 MinIO 管理页：[对象存储控制台](http://127.0.0.1:9001/)，开发凭据见 `.env.example`。`storage:init` 创建桶和图片公开读取策略，不开放写入；写入仅通过鉴权后的后端上传。广告/CDN 图片需配置允许游戏源跨域读取，MinIO 默认开发配置可用于本机；正式 CDN 请配置对应 CORS。
 
@@ -60,7 +60,8 @@ Remove-Item Env:OPERATOR_PASSWORD -ErrorAction SilentlyContinue
 | `DATABASE_URL` | PostgreSQL 连接，账号/存档/经济/内容/广告/审计的权威存储 |
 | `REDIS_URL` | 会话、接口与登录限流；丢失会话后重新登录，不影响钱包 |
 | `PORT` | API端口，默认3001，只监听本机回环 |
-| `APP_ORIGIN` | 完整前端源，所有写入请求检查 Origin，无结尾斜杠 |
+| `APP_ORIGIN` | 主前端完整源，始终加入写请求白名单，无结尾斜杠 |
+| `APP_ALLOWED_ORIGINS` | 额外完整源，逗号分隔；未配置时为本地主源自动补同端口 localhost/127.0.0.1 别名；生产显式配置可信源 |
 | `COOKIE_SECURE` | HTTPS生产环境设为true；本机HTTP为false |
 | `IDENTITY_HASH_SECRET` | 至少32字符随机密钥；证件号只持久化HMAC与出生日期，不保存姓名/证件原文 |
 | `ADMIN_ACCOUNTS` | 逗号分隔运营账号名，必须由CLI预置 |

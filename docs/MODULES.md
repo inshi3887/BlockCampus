@@ -95,3 +95,8 @@
 - 买入、使用、库存不足、并发与重试均由服务端事务/UUID 回执判定；商店与背包显示数量，网络失败重试沿用键；无兑换入口。
 - 运行：`npm run migrate` 后按 README 启动前后端。
 - 验证：`npm test` 9 项通过（119 个 API 请求），覆盖重复买入、同键不重复扣款/扣库存、并发超量使用失败、清空后补充余额再次购买使用；`npm run build` 通过。
+
+## R02 · Origin 白名单（本地提交）
+- `APP_ORIGIN` 加 `APP_ALLOWED_ORIGINS` 配置完整源；本地默认兼容 localhost/127.0.0.1。缺失 Origin 的同源请求放行，Fetch Metadata 明确跨源的请求拒绝，SameSite=Strict 不变。
+- 运行：按 `.env.example` 设置白名单后 `npm run dev` / `npm run dev:web`；主机名、端口规则在 README 启动段显著说明。
+- 验证：`npm test` 11 项通过，覆盖本地别名、配置校验、四种写方法、缺失 Origin、恶意/空源与跨源 Metadata；`npm run build` 通过。

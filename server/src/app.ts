@@ -1,3 +1,4 @@
+import {allowedOrigins} from './config.js'
 import Fastify from 'fastify'
 import cookie from '@fastify/cookie'
 import multipart from '@fastify/multipart'
@@ -11,11 +12,15 @@ import {adsModule} from './ads.js'
 import {progressModule} from './progress.js'
 export interface Cache { get(k:string):Promise<string|null>; set(k:string,v:string,opts?:any):Promise<any>; del(k:string):Promise<any>; incr(k:string):Promise<number>; expire(k:string,s:number):Promise<any> }
 export function createApp(db: DB, cache: Cache) {
+ const origins=allowedOrigins()
  const app = Fastify({logger: process.env.NODE_ENV !== 'test', bodyLimit: 6*1024*1024})
  app.register(cookie); app.register(multipart, {limits:{fileSize:5*1024*1024, files:1}})
  app.decorateRequest('account', null)
  app.addHook('onRequest', async (req,reply) => {
-   if (['POST','PUT','DELETE','PATCH'].includes(req.method) && req.headers.origin !== (process.env.APP_ORIGIN || 'http://127.0.0.1:5173')) return reply.code(403).send({error:'请求来源无效'})
+   if (['POST','PUT','DELETE','PATCH'].includes(req.method)) {
+    const origin=req.headers.origin,site=req.headers['sec-fetch-site']
+    if(origin!==undefined ? !origins.has(origin) : site!==undefined&&!['same-origin','none'].includes(String(site))) return reply.code(403).send({error:'请求来源无效'})
+   }
    if (req.url.startsWith('/api/')) {
     const key=`rate:${req.ip}:${Math.floor(Date.now()/60000)}`; const n=await cache.incr(key); if(n===1) await cache.expire(key,65)
     if(n>180) return reply.code(429).send({error:'操作太频繁，请稍后重试'})
