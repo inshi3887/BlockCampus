@@ -1,4 +1,4 @@
-import {randomUUID} from 'node:crypto'
+import {randomUUID,createHash} from 'node:crypto'
 import type {FastifyInstance} from 'fastify'
 import {z} from 'zod'
 import {fail} from './app.js'
@@ -9,7 +9,7 @@ export function blocked(text:string) {return ['赌博','代开发票','毒品交
 export function adminGuard(auth:any) {return async(req:any)=>{await auth(req);if(!(process.env.ADMIN_ACCOUNTS||'').split(',').includes(req.account.username))fail('需要运营权限',403)}}
 export function contentModule(app:FastifyInstance,db:DB,play:any,auth:any) {
  const admin=adminGuard(auth)
- async function visible(id:string,user:string) {const p=(await db.query('SELECT * FROM posts WHERE id=$1',[id])).rows[0];if(!p||p.status!=='approved'||(p.channel==='friends'&&p.account_id!==user))fail('内容不可见',404);return p}
+ async function visible(id:string,user:string,source:DB=db) {const p=(await source.query('SELECT * FROM posts WHERE id=$1',[id])).rows[0];if(!p||p.status!=='approved'||(p.channel==='friends'&&p.account_id!==user))fail('内容不可见',404);return p}
  app.post('/api/uploads',{preHandler:play},async req=>{const data=await req.file();if(!data)fail('请选择图片');const bytes=await data.toBuffer();if(!bytes.length)fail('图片为空');const image=await putImage(bytes),id=randomUUID();await db.query('INSERT INTO uploads(id,account_id,object_key,url,mime) VALUES($1,$2,$3,$4,$5)',[id,req.account.id,image.key,image.url,image.mime]);return {id,url:image.url,status:'pending'}})
  app.post('/api/posts',{preHandler:play},req=>{
   const b=z.object({key:z.string().uuid(),channel:z.enum(['forum','friends']),body:z.string().min(1).max(2000),uploadId:z.string().uuid().optional(),photoEvent:z.string().uuid().optional(),adSlot:z.string().max(64).optional()}).strict().parse(req.body)
@@ -23,7 +23,15 @@ export function contentModule(app:FastifyInstance,db:DB,play:any,auth:any) {
  })
  app.get('/api/posts',{preHandler:play},async req=>{const q=z.object({channel:z.enum(['forum','friends']).default('forum'),before:z.iso.datetime().optional()}).parse(req.query);return (await db.query(`SELECT p.*,a.username,u.url,(SELECT count(*)::int FROM likes l WHERE l.post_id=p.id) AS likes FROM posts p JOIN accounts a ON a.id=p.account_id LEFT JOIN uploads u ON u.id=p.upload_id WHERE p.channel=$1 AND (p.account_id=$2 OR (p.channel='forum' AND p.status='approved')) AND ($3::timestamptz IS NULL OR p.created_at<$3) ORDER BY p.created_at DESC LIMIT 30`,[q.channel,req.account.id,q.before||null])).rows})
  app.get('/api/posts/:id/comments',{preHandler:play},async req=>{const id=z.string().uuid().parse((req.params as any).id);await visible(id,req.account.id);return (await db.query("SELECT c.id,c.body,a.username,c.created_at FROM comments c JOIN accounts a ON a.id=c.account_id WHERE post_id=$1 AND status='approved' ORDER BY c.created_at LIMIT 100",[id])).rows})
- app.post('/api/posts/:id/comments',{preHandler:play},async req=>{const id=z.string().uuid().parse((req.params as any).id);await visible(id,req.account.id);const b=z.object({body:z.string().min(1).max(500)}).parse(req.body);if(blocked(b.body))fail('评论含敏感词');await db.query('INSERT INTO comments(id,post_id,account_id,body) VALUES($1,$2,$3,$4)',[randomUUID(),id,req.account.id,b.body]);return {status:'pending'}})
+ app.post('/api/posts/:id/comments',{preHandler:play},req=>{
+  const id=z.string().uuid().parse((req.params as any).id)
+  const b=z.object({key:z.string().uuid(),body:z.string().min(1).max(500)}).strict().parse(req.body)
+  const action='comment:'+id+':'+createHash('sha256').update(b.body).digest('hex')
+  return idempotent(db,req.account.id,b.key,action,async tx=>{
+   await visible(id,req.account.id,tx);if(blocked(b.body))fail('评论含敏感词')
+   const commentId=randomUUID();await tx.query('INSERT INTO comments(id,post_id,account_id,body) VALUES($1,$2,$3,$4)',[commentId,id,req.account.id,b.body]);return {id:commentId,status:'pending'}
+  })
+ })
  app.post('/api/posts/:id/like',{preHandler:play},async req=>{const id=z.string().uuid().parse((req.params as any).id);await visible(id,req.account.id);await db.query('INSERT INTO likes VALUES($1,$2) ON CONFLICT DO NOTHING',[id,req.account.id]);return {ok:true}})
  app.post('/api/posts/:id/report',{preHandler:play},async req=>{const id=z.string().uuid().parse((req.params as any).id);await visible(id,req.account.id);const b=z.object({reason:z.string().min(1).max(300)}).parse(req.body);await db.query('INSERT INTO reports VALUES($1,$2,$3,$4,now())',[randomUUID(),id,req.account.id,b.reason]);return {ok:true}})
  app.get('/api/admin/review',{preHandler:admin},async()=>({posts:(await db.query("SELECT p.*,u.url FROM posts p LEFT JOIN uploads u ON u.id=p.upload_id WHERE p.status='pending' ORDER BY p.created_at LIMIT 100")).rows,comments:(await db.query("SELECT * FROM comments WHERE status='pending' LIMIT 100")).rows,reports:(await db.query('SELECT * FROM reports ORDER BY created_at DESC LIMIT 100')).rows}))

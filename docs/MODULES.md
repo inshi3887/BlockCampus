@@ -100,3 +100,9 @@
 - `APP_ORIGIN` 加 `APP_ALLOWED_ORIGINS` 配置完整源；本地默认兼容 localhost/127.0.0.1。缺失 Origin 的同源请求放行，Fetch Metadata 明确跨源的请求拒绝，SameSite=Strict 不变。
 - 运行：按 `.env.example` 设置白名单后 `npm run dev` / `npm run dev:web`；主机名、端口规则在 README 启动段显著说明。
 - 验证：`npm test` 11 项通过，覆盖本地别名、配置校验、四种写方法、缺失 Origin、恶意/空源与跨源 Metadata；`npm run build` 通过。
+
+## R03 · 评论幂等（本地提交）
+- 评论接口复用账号锁与 UUID 回执，绑定帖子与正文摘要；同键重试返回同一评论 ID，异内容复用键返回 409。可见性/敏感词校验与插入在事务内执行。
+- 前端提交中禁用按钮，网络失败保留同一评论意图的键，成功后新建下一次意图。
+- 运行：`npm run dev` / `npm run dev:web`，论坛已审核帖子下发表评论。
+- 验证：`npm test` 11 项通过（133 个 API 请求），覆盖并发双击/重试唯一、异内容键冲突、缺失/非法键、不可见帖子、待审及审核后重试；`npm run build` 通过。
