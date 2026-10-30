@@ -1,0 +1,1 @@
+CREATE TABLE saves(account_id uuid PRIMARY KEY REFERENCES accounts(id), version integer NOT NULL DEFAULT 0, schema_version integer NOT NULL DEFAULT 1, data jsonb NOT NULL DEFAULT '{}', updated_at timestamptz NOT NULL DEFAULT now());

@@ -4,6 +4,7 @@ import multipart from '@fastify/multipart'
 import type { DB } from './db.js'
 import {authModule} from './auth.js'
 import {identityModule} from './identity.js'
+import {saveModule} from './saves.js'
 export interface Cache { get(k:string):Promise<string|null>; set(k:string,v:string,opts?:any):Promise<any>; del(k:string):Promise<any>; incr(k:string):Promise<number>; expire(k:string,s:number):Promise<any> }
 export function createApp(db: DB, cache: Cache) {
  const app = Fastify({logger: process.env.NODE_ENV !== 'test', bodyLimit: 6*1024*1024})
@@ -20,6 +21,7 @@ export function createApp(db: DB, cache: Cache) {
  app.get('/api/health',async()=>{await db.query('SELECT 1'); await cache.get('health'); return {ok:true}})
  const auth=authModule(app,db,cache)
  const play=identityModule(app,db,auth)
+ saveModule(app,db,play)
  return app
 }
 export function fail(message:string,statusCode=400):never { throw Object.assign(new Error(message),{statusCode}) }
