@@ -6,6 +6,7 @@
     <CampusHUD v-if="authorized" />
     <Classroom v-if="authorized" />
     <SocialPanel v-if="authorized" />
+    <AdPanel v-if="authorized" />
     <div v-if="loading" class="loading">
       <div class="mc-panel load-box">
         <div class="mc-title">方块羊城</div>
@@ -23,6 +24,7 @@ import AccountGate from './components/AccountGate.vue'
 import CampusHUD from './components/CampusHUD.vue'
 import Classroom from './components/Classroom.vue'
 import SocialPanel from './components/SocialPanel.vue'
+import AdPanel from './components/AdPanel.vue'
 import './campus/cosmetics.js'
 import { store } from './game/store.js'
 import Menu from './components/Menu.vue'
