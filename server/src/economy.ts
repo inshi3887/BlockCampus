@@ -68,7 +68,8 @@ export function economyModule(app:FastifyInstance,db:DB,play:any) {
    return {status:'active',watched,needsConfirm:sinceConfirm>=300}
   }
   if(b.type==='finish') {
-   if(watched<RULES.lessonSeconds||now-new Date(lesson.started_at).getTime()<RULES.lessonSeconds/Number(lesson.speed)*1000)fail('课程未完整播放或需要观看确认')
+   // Tolerate floating-point accumulation noise; wall-clock duration remains strict.
+   if(watched<RULES.lessonSeconds-1e-6||now-new Date(lesson.started_at).getTime()<RULES.lessonSeconds/Number(lesson.speed)*1000)fail('课程未完整播放或需要观看确认')
    const w=await wallet(tx,req.account.id);const next=growth(w.points+10);let gold=0;for(let lv=w.level;lv<next.level;lv++)gold+=levelGold(lv)*10000
    await tx.query('UPDATE wallets SET points=points+10,level=$2 WHERE account_id=$1',[req.account.id,next.level]);await credit(tx,req.account.id,'lesson-complete',{gold_copper:gold,points:10});await tx.query("UPDATE lessons SET status='completed' WHERE id=$1",[lessonId]);return {status:'completed',awarded:true,points:10,gold_copper:gold}
   }

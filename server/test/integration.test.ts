@@ -80,7 +80,12 @@ test('full PostgreSQL API: auth/save/economy/lessons/moderation/ads and abuse bo
  assert.equal((await call('POST','/api/shop/use',{key:randomUUID(),sku:'cap'},cookie)).statusCode,400)
  const lesson=(await call('POST','/api/lessons/start',{key:randomUUID(),seat:1,speed:1},cookie)).json();assert.ok(lesson.id)
  assert.equal((await call('POST',`/api/lessons/${lesson.id}/event`,{key:randomUUID(),type:'finish'},cookie)).statusCode,400)
- await raw.query("UPDATE lessons SET started_at=now()-interval '601 seconds',watched_seconds=600 WHERE id=$1",[lesson.id])
+ // Disable interval accrual (46s > bounded 45s) so tests exercise the exact stored boundary.
+ await raw.query("UPDATE lessons SET last_seen=now()-interval '46 seconds',watched_seconds=599.9999999 WHERE id=$1",[lesson.id])
+ assert.equal((await call('POST',`/api/lessons/${lesson.id}/event`,{key:randomUUID(),type:'finish'},cookie)).statusCode,400) // wall clock still too early
+ await raw.query("UPDATE lessons SET started_at=now()-interval '601 seconds',last_seen=now()-interval '46 seconds',watched_seconds=599.999998 WHERE id=$1",[lesson.id])
+ assert.equal((await call('POST',`/api/lessons/${lesson.id}/event`,{key:randomUUID(),type:'finish'},cookie)).statusCode,400) // outside epsilon
+ await raw.query("UPDATE lessons SET watched_seconds=599.9999999 WHERE id=$1",[lesson.id])
  const finishKey=randomUUID();const finish=await call('POST',`/api/lessons/${lesson.id}/event`,{key:finishKey,type:'finish'},cookie);assert.equal(finish.statusCode,200,finish.body);assert.equal(finish.json().points,10)
  assert.deepEqual((await call('POST',`/api/lessons/${lesson.id}/event`,{key:finishKey,type:'finish'},cookie)).json(),finish.json())
  const interrupted=(await call('POST','/api/lessons/start',{key:randomUUID(),seat:2,speed:1.25},cookie)).json()
