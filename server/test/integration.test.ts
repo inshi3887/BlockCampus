@@ -55,7 +55,7 @@ test('full PostgreSQL API: auth/save/economy/lessons/moderation/ads and abuse bo
  assert.equal((await call('POST','/api/economy/convert',{gold:1},cookie)).statusCode,404)
  // Repeated sinks, receipts and concurrent consumption remain server authoritative.
  assert.equal((await call('POST','/api/shop/buy',{key:randomUUID(),sku:'cap'},cookie)).statusCode,409)
- await raw.query('UPDATE wallets SET copper=300,silver_copper=30000 WHERE account_id=$1',[id])
+ await raw.query('UPDATE wallets SET copper=300,silver_copper=300 WHERE account_id=$1',[id])
  for(const sku of ['copper-border','silver-sticker']){
   for(let i=0;i<3;i++){
    const body={key:randomUUID(),sku};const purchased=await call('POST','/api/shop/buy',body,cookie)
@@ -72,7 +72,7 @@ test('full PostgreSQL API: auth/save/economy/lessons/moderation/ads and abuse bo
  }
  const empty=(await call('GET','/api/economy',undefined,cookie)).json();assert.equal(empty.copper,0);assert.equal(empty.silver_copper,0)
  // Accumulated daily proceeds can be spent again after all stock has been used.
- await raw.query('UPDATE wallets SET copper=copper+100,silver_copper=silver_copper+10000 WHERE account_id=$1',[id])
+ await raw.query('UPDATE wallets SET copper=copper+100,silver_copper=silver_copper+100 WHERE account_id=$1',[id])
  for(const sku of ['copper-border','silver-sticker']){
   assert.equal((await call('POST','/api/shop/buy',{key:randomUUID(),sku},cookie)).json().quantity,1)
   assert.equal((await call('POST','/api/shop/use',{key:randomUUID(),sku},cookie)).json().quantity,0)

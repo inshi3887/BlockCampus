@@ -8,5 +8,5 @@ export const CATALOG=[
  {id:'plant',name:'宿舍绿植',kind:'decoration',currency:'gold_copper',price:10000,unlock:{level:1}},
  {id:'profile5',name:'五级校友名片',kind:'appearance',currency:'gold_copper',price:0,unlock:{level:5}},
  {id:'copper-border',name:'朋友圈木纹边框',kind:'appearance',currency:'copper',price:100,consumable:true,unlock:{level:1}},
- {id:'silver-sticker',name:'银色校园贴纸',kind:'photography',currency:'silver_copper',price:10000,consumable:true,unlock:{level:1}}
+ {id:'silver-sticker',name:'银色校园贴纸',kind:'photography',currency:'silver_copper',price:100,consumable:true,unlock:{level:1}}
 ] as const
