@@ -7,12 +7,22 @@ services:
   redis:
     image: redis:7-alpine
     ports: ["127.0.0.1:6379:6379"]
-  minio:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
-    command: server /data --console-address :9001
-    environment: { MINIO_ROOT_USER: campus, MINIO_ROOT_PASSWORD: campus-local-secret }
-    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
-    volumes: ["objects:/data"]
+  seaweedfs:
+    image: m.daocloud.io/docker.io/chrislusf/seaweedfs:4.51
+    command: ["mini", "-dir=/data", "-ip=seaweedfs", "-ip.bind=0.0.0.0", "-webdav=false", "-s3.port.iceberg=0", "-s3.port.lance=0", "-admin.port.legacy=0"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-campus}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-campus-local-secret}
+      WEED_ADMIN_USER: ${SEAWEED_ADMIN_USER:-admin}
+      WEED_ADMIN_PASSWORD: ${SEAWEED_ADMIN_PASSWORD:-campus-admin-local-secret}
+    ports: ["127.0.0.1:9000:8333", "127.0.0.1:9001:12535"]
+    volumes: ["seaweed_objects:/data"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8333/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
 volumes:
   pgdata:
-  objects:
+  seaweed_objects:

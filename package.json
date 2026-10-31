@@ -13,6 +13,7 @@
     "test": "npm run test -w server",
     "migrate": "npm run migrate -w server",
     "test:storage": "npm run test:storage -w server",
+    "test:storage:live": "npm run test:storage:live -w server",
     "sync:places": "node scripts/sync-places.mjs",
     "check:places": "node scripts/sync-places.mjs --check"
   }

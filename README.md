@@ -8,19 +8,7 @@ Vue 3 + Three.js 单机渲染，Node.js 22+ 与 TypeScript 模块化单体，Pos
 
 依赖：Node.js 22+（建议安装所选主版本的最新补丁）、npm 11、Docker Compose v2；浏览器需支持 WebGL2 与 IndexedDB。也可以自行提供 PostgreSQL 16、Redis 7 和 S3 兼容服务，修改 `.env` 即可。
 
-**MinIO 镜像与国内网络：** Compose 使用 `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z` 固定标签，对应 [MinIO 官方发布](https://github.com/minio/minio/releases/tag/RELEASE.2025-09-07T16-13-09Z)。国内环境需配置可达且明确支持 `quay.io` 的镜像加速器/拉取代理，否则 `docker compose up` 可能卡在 MinIO 拉取；仅支持 Docker Hub 的加速器不保证有效。
-
-2026-10-31 校验时，Quay Registry 在匿名鉴权后仍返回 HTTP 401，**尚未确认该镜像当前可公开拉取**，本机也未完成真实 MinIO 启动验证。请在网络可达且安装 Docker 的环境执行下列命令复验；若仍为 401/403，需确认上游仓库公开权限，若为 `manifest unknown` 则需重新核实标签，加速器不能解决上游权限或标签缺失：
-
-```powershell
-docker compose pull minio
-docker compose up -d
-docker compose ps minio
-docker compose logs --tail 50 minio
-npm run storage:init -w server
-```
-
-启动成功后，在游戏内实际上传图片并读取返回的对象 URL，复验真实 MinIO 写入与读取。`npm run test:storage` 使用协议桩，不能替代这一步。
+**对象存储使用 SeaweedFS 4.51**（Apache 2.0 开源许可，无需商业 license key），替代已下架公共容器镜像的 MinIO。Compose 默认使用已实测匿名拉取成功的国内源 `m.daocloud.io/docker.io/chrislusf/seaweedfs:4.51`；上游是 `chrislusf/seaweedfs:4.51`。2026-10-31 在 WSL openEuler-24.03 / Docker 26.1.3 上完成首次下载，并以全新空 Docker 配置再次验证匿名拉取。摘要：`sha256:f7a49e3f3972ebed5be2ed4befa4a0c68eb7bdddba6e692d42729ceb545134b8`。完整命令与输出见 [对象存储实测记录](docs/STORAGE-VALIDATION.md)。不再使用 Quay，也不再将原 MinIO 的 401 归因为网络问题。
 
 在 PowerShell 中：
 
@@ -30,7 +18,8 @@ npm ci
 Copy-Item .env.example .env
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 # 将输出写入 .env 的 IDENTITY_HASH_SECRET；不要沿用 replace- 占位值。
-docker compose up -d
+docker compose pull seaweedfs
+docker compose up -d --wait
 npm run migrate
 npm run storage:init -w server
 npm run dev
@@ -45,7 +34,26 @@ npm run dev:web
 
 打开 [游戏](http://127.0.0.1:5173/)；[运营端](http://127.0.0.1:5173/admin.html)。**访问地址必须与 `APP_ORIGIN` 或 `APP_ALLOWED_ORIGINS` 中某一完整源完全一致（协议、主机名、端口；无结尾斜杠）。** 默认允许 `http://127.0.0.1:5173` 和 `http://localhost:5173`。端口变更时同步修改这些配置和 Vite 端口。显式 Origin 不在白名单（含 `null`）会被拒绝；缺失 Origin 时允许同源/无 Fetch Metadata 的反代与 CLI 请求，拒绝 Fetch Metadata 表明的跨源请求。会话 Cookie 保持 `SameSite=Strict`，反代应保留 Origin/Fetch Metadata；生产白名单只配置可信源。Vite 的 `/api` 代理到 `127.0.0.1:3001`。
 
-MinIO 管理页：[对象存储控制台](http://127.0.0.1:9001/)，开发凭据见 `.env.example`。`storage:init` 创建桶和图片公开读取策略，不开放写入；写入仅通过鉴权后的后端上传。广告/CDN 图片需配置允许游戏源跨域读取，MinIO 默认开发配置可用于本机；正式 CDN 请配置对应 CORS。
+SeaweedFS 单节点 `mini` 模式把 master、volume、filer、S3 网关和管理 UI 放在一个容器中，数据及元数据保存在 `seaweed_objects:/data`。S3 地址为 `http://127.0.0.1:9000`（映射容器 8333），[管理控制台](http://127.0.0.1:9001/)映射容器 12535。控制台开发账号 `admin` / `campus-admin-local-secret`，可通过 `SEAWEED_ADMIN_USER` / `SEAWEED_ADMIN_PASSWORD` 修改；它与 S3 Access Key/Secret Key 独立。只向宿主机回环发布这两个端口，其他内部服务及 WebDAV 不对宿主机开放。
+
+`storage:init` 沿用原 S3 SDK 脚本：创建桶并设置仅 `images/*` 允许匿名 `s3:GetObject` 的策略。已在真实 SeaweedFS 验证重复初始化、签名上传、匿名读取；匿名写入、删除、列桶、非图片路径读取均被拒绝。广告/CDN 图片需配置允许游戏源跨域读取；正式部署使用实际 HTTPS 对象存储/CDN 地址。
+
+只更新对象存储、不重启已有数据库时，在 Docker 所在环境执行：
+
+```sh
+docker compose pull seaweedfs
+docker compose up -d --wait seaweedfs
+docker compose ps seaweedfs
+docker compose logs --tail 50 seaweedfs
+npm run storage:init -w server
+npm run test:storage:live
+```
+
+`test:storage:live` 读取 `.env`，创建独立随机测试桶并在结束后清理，只操作自建测试数据。`test:storage` 仍是 HTTP 协议桩测试，二者用途不同。修改 S3 凭据后重新创建容器，并在控制台核实/撤销旧身份；仅修改 `.env` 不等于撤销已持久化的旧凭据。
+
+**已有 MinIO 数据：** 新服务使用全新的 `seaweed_objects` 卷，不复用或删除旧 `objects` 卷；两者磁盘格式不兼容。已有对象需通过 S3/API 导出导入，不能直接把 MinIO 数据目录挂给 SeaweedFS。不要使用 `docker compose down -v` 清理正式数据。
+
+本机 Docker 实际位于 WSL `openEuler-24.03`，Windows PATH 中没有 Docker。可进入该发行版，在 `/mnt/d/wsl/Ubuntu/items/game/BlockCampus` 运行 Compose，或使用 `wsl -d openEuler-24.03 -- docker compose -f /mnt/d/wsl/Ubuntu/items/game/BlockCampus/compose.yaml ...`。本轮 Windows 到 WSL 的 `127.0.0.1:9000` 未转发成功，真实 S3 验证在 WSL 内执行；后端与对象存储需在同一可达网络环境，若跨 Windows/WSL 运行，应先验证端口转发，不能假定 Windows 回环地址一定指向 WSL。Windows 与 Linux 的原生依赖不同，请分别安装依赖，不混用同一 `node_modules`。
 
 账号流程：注册 → 自建实名占位 → 创建角色 → 选择广东工业大学。普通账号从0金币/0积分开始，没有调试赠币。课程采用自产图文讲义，10分钟，可选1×/1.25×；完整观看+10分，升级自动发金币。
 
@@ -81,9 +89,13 @@ Remove-Item Env:OPERATOR_PASSWORD -ErrorAction SilentlyContinue
 | `ADMIN_ACCOUNTS` | 逗号分隔运营账号名，必须由CLI预置 |
 | `HOLIDAYS` | 运营复核后配置的逗号分隔中国法定节假日，如 YYYY-MM-DD；空值仅按周五六日 |
 | `BLOCKED_WORDS` | 额外敏感词，逗号分隔；内置基础词表仅供内测 |
-| `S3_ENDPOINT` / `S3_REGION` | 对象存储服务地址与region |
-| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | 后端对象存储凭据，绝不发给游戏客户端 |
-| `S3_BUCKET` / `S3_PUBLIC_URL` | 桶名与可公开读取的CDN/对象前缀 |
+| `S3_ENDPOINT` | 默认 `http://127.0.0.1:9000`，SeaweedFS S3 网关的宿主机地址；若后端在 Compose 网络内，使用 `http://seaweedfs:8333` |
+| `S3_REGION` | 默认 `us-east-1`，用于 AWS SDK 签名 |
+| `S3_ACCESS_KEY` | 开发默认 `campus`，Compose 映射为 SeaweedFS 的 `AWS_ACCESS_KEY_ID` |
+| `S3_SECRET_KEY` | 开发默认 `campus-local-secret`，Compose 映射为 `AWS_SECRET_ACCESS_KEY`；与后端一致，绝不发给客户端 |
+| `S3_BUCKET` | 默认 `campus`，由 `npm run storage:init -w server` 创建 |
+| `S3_PUBLIC_URL` | 默认 `http://127.0.0.1:9000/campus`，浏览器可达的对象桶 URL，无结尾斜杠；远端部署换实际对象/CDN 地址并带桶路径 |
+| `SEAWEED_ADMIN_USER` / `SEAWEED_ADMIN_PASSWORD` | 管理 UI 独立账号，开发默认 `admin` / `campus-admin-local-secret`；非 S3 API 凭据 |
 
 **内测限制：自建实名/防沉迷占位可被修改客户端绕过；仅在限号、不商业化的内测阶段接受。商业化前必须切换国家实名/防沉迷接口。**
 
@@ -102,7 +114,7 @@ Remove-Item Env:OPERATOR_PASSWORD -ErrorAction SilentlyContinue
 
 ## 数据库与权威边界
 
-`server/migrations/001_*.sql` 至 `008_*.sql` 顺序执行。`npm run migrate` 使用事务、迁移记录与 PostgreSQL advisory lock，可重复运行。升级前先备份数据库。Compose 的 `pgdata`、`objects` 持久卷保存数据；不要用 `down -v` 清理正式数据。
+`server/migrations/001_*.sql` 至 `008_*.sql` 顺序执行。`npm run migrate` 使用事务、迁移记录与 PostgreSQL advisory lock，可重复运行。升级前先备份数据库。Compose 的 `pgdata`、`seaweed_objects` 持久卷保存数据；不要用 `down -v` 清理正式数据。
 
 关键约束：
 
@@ -134,11 +146,11 @@ npm run build
 本次验证：
 
 - TypeScript严格检查与Vite生产构建通过，游戏和运营端分别构建；Three.js独立分包。
-- 修复后 11 个测试通过，包括 PostgreSQL/PGlite 真实 SQL 集成，135 个 API 请求：注册/鉴权、实名门禁、云档注入/版本冲突、并发幂等与余额不足、20/5日上限、重复审核、朋友圈隔离、提前结课/后台超时/五分钟确认；新增银铜重复购买与消耗、Origin 白名单、评论幂等和课程浮点边界回归。
+- 修复后 12 个测试通过，包括 PostgreSQL/PGlite 真实 SQL 集成，135 个 API 请求：注册/鉴权、实名门禁、云档注入/版本冲突、并发幂等与余额不足、20/5日上限、重复审核、朋友圈隔离、提前结课/后台超时/五分钟确认；新增银铜重复购买与消耗、Origin 白名单、评论幂等和课程浮点边界回归。
 - 两类各10000次分层采样核对24/87.95铜；升级阶梯与纯外观商品校验通过。
-- 另1个S3 SDK HTTP协议测试通过：建桶、策略、图片PUT、内容类型/字节与拒绝SVG。测试使用本机协议桩，未冒充MinIO部署验收。
+- 另1个S3 SDK HTTP协议测试通过：建桶、策略、图片PUT、内容类型/字节与拒绝SVG。此项使用本机协议桩；另有 `test:storage:live` 对真实 SeaweedFS 验证，结果见对象存储实测记录。
 - 浏览器验证了登录、全新账号与游客隔离、角色创建、校园渲染、商店解锁、校园传送；详细结果见 `docs/VALIDATION.md`。
-- **当前机器没有Docker、原生PostgreSQL/Redis/MinIO，完整Compose依赖链未在本机启动。** CI配置为用真实PostgreSQL/Redis执行集成测试（含TTL检查），尚未运行远端CI；本地SQL测试使用嵌入式PostgreSQL，Redis为测试替身。真实Redis TTL/重启和MinIO/CDN需在依赖齐全的环境复验。
+- **对象存储已补真实验证**：在 WSL openEuler 中发现可用 Docker，SeaweedFS 匿名镜像拉取、健康检查、初始化、实际上传与匿名读写边界通过。本轮未重新验收完整 PG/Redis 依赖链或远端 CDN；常规 `npm test` 仍使用 PGlite 与 Redis 测试替身，远端 CI 尚未运行。
 - **60FPS尚未验收**：当前内嵌浏览器原版广州塔与校园均约1FPS，无法证明目标硬件60FPS基线。保留距离加载/LOD，新增HUD显示实际平均FPS/P95帧时/draw calls；请按下述步骤在目标GPU上复测。
 
 目标机性能回归：同分辨率/画质/天气/时间，在原版与校园版广州塔各暖机30秒、采样60秒，再跑校门/教室/图书馆与摄影模式；核对平均FPS、P95≤16.7ms目标及帧峰值，并往返城区/校园10次检查资源回收。未达到60FPS之前，不将性能指标标为通过。

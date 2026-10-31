@@ -9,6 +9,7 @@
     "migrate": "tsx --env-file=../.env src/migrate.ts",
     "test": "tsx --test test/*.test.ts",
     "test:storage": "tsx --test test/storage.integration.ts",
+    "test:storage:live": "tsx --env-file=../.env --test test/storage.live.ts",
     "storage:init": "tsx --env-file=../.env src/init-storage.ts",
     "operator:create": "tsx --env-file=../.env src/create-operator.ts",
     "qa": "tsx test/qa-server.ts"

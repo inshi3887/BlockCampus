@@ -123,3 +123,10 @@
 - `silver-sticker.price` 改回 100 铜单位，即 1 银；补独立回归断言，同步集成测试余额与文档价格说明。
 - 验证命令（项目根目录）：`npm test`。
 - 2026-10-31 验证：12 项全部通过，135 个集成 API 请求；SQL 使用 PGlite、Redis 使用测试替身。当前环境依赖可用，未遇到 spawn 限制。
+
+## R06 · 对象存储替换为 SeaweedFS
+- 在修改 Compose 前，于 WSL openEuler-24.03 实测 `docker pull m.daocloud.io/docker.io/chrislusf/seaweedfs:4.51` 成功，并用全新空 Docker 配置验证匿名拉取；摘要与原始输出见 `docs/STORAGE-VALIDATION.md`。
+- Compose 使用 SeaweedFS mini、独立持久卷 `seaweed_objects`、S3 与管理 UI 独立凭据、回环端口和健康检查；保留旧 MinIO 卷，不做磁盘格式混用。
+- `storage:init` 与上传实现不变；新增 `npm run test:storage:live` 真实 S3 回归：重复初始化、策略回读、签名上传、图片匿名 GET、匿名私有 GET/列桶/PUT/DELETE 拒绝。
+- 启动：`docker compose up -d --wait seaweedfs`；配置 `.env` 后 `npm run storage:init -w server`。README 已更新控制台与全部 S3 环境变量对应关系。
+- 验证：真实容器 healthy，原初始化成功，真实 S3 测试 1 项通过；`npm test` 12 项通过（135 个 API 请求）、`npm run test:storage` 1 项通过、`npm run build` 通过。当前机 Windows/WSL 差异与实际编译/运行命令在实测记录中完整披露。
