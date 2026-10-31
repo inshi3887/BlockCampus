@@ -1,12 +1,26 @@
 # BlockCampus（方块校园）· MVP 阶段一
 
-Vue 3 + Three.js 单机渲染，Node 24 + TypeScript 模块化单体，PostgreSQL / Redis / S3。新增项目独立于 `../guangzhou`，原蓝本没有修改。设计以 `../docs/方块校园-完整策划案.md` v1.4 为准。
+Vue 3 + Three.js 单机渲染，Node.js 22+ 与 TypeScript 模块化单体，PostgreSQL / Redis / S3。新增项目独立于 `../guangzhou`，原蓝本没有修改。设计以 `../docs/方块校园-完整策划案.md` v1.4 为准。
 
 实现：账号/实名占位/防沉迷、云存档、服务端三币与积分、课程结算、装扮商店、广东工业大学示意校园、摄影打卡、论坛/朋友圈、人工审核、独立广告运营端。没有 WebSocket、武汉地图、抢点或 GPS 重合结算；这些属于 P1。63次重合上限仅保留配置，不开放领取入口。
 
 ## 启动（正式依赖链路）
 
-依赖：Node.js 24、npm 11、Docker Compose v2；浏览器需支持 WebGL2 与 IndexedDB。也可以自行提供 PostgreSQL 16、Redis 7 和 S3 兼容服务，修改 `.env` 即可。
+依赖：Node.js 22+（建议安装所选主版本的最新补丁）、npm 11、Docker Compose v2；浏览器需支持 WebGL2 与 IndexedDB。也可以自行提供 PostgreSQL 16、Redis 7 和 S3 兼容服务，修改 `.env` 即可。
+
+**MinIO 镜像与国内网络：** Compose 使用 `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z` 固定标签，对应 [MinIO 官方发布](https://github.com/minio/minio/releases/tag/RELEASE.2025-09-07T16-13-09Z)。国内环境需配置可达且明确支持 `quay.io` 的镜像加速器/拉取代理，否则 `docker compose up` 可能卡在 MinIO 拉取；仅支持 Docker Hub 的加速器不保证有效。
+
+2026-10-31 校验时，Quay Registry 在匿名鉴权后仍返回 HTTP 401，**尚未确认该镜像当前可公开拉取**，本机也未完成真实 MinIO 启动验证。请在网络可达且安装 Docker 的环境执行下列命令复验；若仍为 401/403，需确认上游仓库公开权限，若为 `manifest unknown` 则需重新核实标签，加速器不能解决上游权限或标签缺失：
+
+```powershell
+docker compose pull minio
+docker compose up -d
+docker compose ps minio
+docker compose logs --tail 50 minio
+npm run storage:init -w server
+```
+
+启动成功后，在游戏内实际上传图片并读取返回的对象 URL，复验真实 MinIO 写入与读取。`npm run test:storage` 使用协议桩，不能替代这一步。
 
 在 PowerShell 中：
 

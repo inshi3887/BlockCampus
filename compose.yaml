@@ -8,7 +8,7 @@ services:
     image: redis:7-alpine
     ports: ["127.0.0.1:6379:6379"]
   minio:
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --console-address :9001
     environment: { MINIO_ROOT_USER: campus, MINIO_ROOT_PASSWORD: campus-local-secret }
     ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
