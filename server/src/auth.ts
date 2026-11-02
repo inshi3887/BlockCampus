@@ -20,12 +20,15 @@ export function authModule(app:FastifyInstance,db:DB,cache:Cache) {
  })
  app.post('/api/auth/login',async(req,reply)=>{
   const b=schema.omit({phone:true}).parse(req.body)
-  const key='login:'+req.ip+':'+b.username; const n=await cache.incr(key);if(n===1)await cache.expire(key,900);if(n>10)fail('登录尝试过多，请15分钟后重试',429)
+  const keys=['login:ip:'+req.ip,'login:user:'+b.username];let limited=false
+  try{for(const key of keys){const n=await cache.incr(key);if(n===1)await cache.expire(key,900);if(n>10)limited=true}}
+  catch(error){limited=false;req.log.warn({err:error},'Redis login limit unavailable; allowing attempt')}
+  if(limited)fail('登录尝试过多，请15分钟后重试',429)
   const user=(await db.query('SELECT * FROM accounts WHERE username=$1',[b.username])).rows[0]
   // Always perform scrypt, including unknown accounts.
   const hash=user?.password_hash || await hashPassword('dummy-password-for-timing')
   if(!await verifyPassword(b.password,hash)||!user)fail('账号或密码错误',401)
-  await cache.del(key); return issue(user.id,reply)
+  try{for(const key of keys)await cache.del(key)}catch(error){req.log.warn({err:error},'Redis login counter reset failed')}return issue(user.id,reply)
  })
  const auth=async(req:FastifyRequest)=>{const token=req.cookies.campus_session;if(!token)fail('请先登录',401);const id=await cache.get(tokenKey(token));if(!id)fail('会话已过期',401);if(req.headers['x-campus-account']&&req.headers['x-campus-account']!==id)fail('会话账号已切换，请重新进入',401);req.account=(await db.query('SELECT id,username FROM accounts WHERE id=$1',[id])).rows[0];if(!req.account)fail('账号不存在',401)}
  app.get('/api/auth/me',{preHandler:auth},async req=>req.account)

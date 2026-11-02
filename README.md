@@ -82,6 +82,7 @@ Remove-Item Env:OPERATOR_PASSWORD -ErrorAction SilentlyContinue
 | `DATABASE_URL` | PostgreSQL 连接，账号/存档/经济/内容/广告/审计的权威存储 |
 | `REDIS_URL` | 会话、接口与登录限流；丢失会话后重新登录，不影响钱包 |
 | `PORT` | API端口，默认3001，只监听本机回环 |
+| `TRUSTED_PROXY` | 逗号分隔可信反代 IP/CIDR，默认 `127.0.0.1,::1`；仅配置实际代理网段，禁止全部信任。基于可信转发后的 `req.ip` 限流，健康检查跳过；登录按 IP 和用户名独立计数，Redis 计数不可用时 warn 并放行 |
 | `APP_ORIGIN` | 主前端完整源，始终加入写请求白名单，无结尾斜杠 |
 | `APP_ALLOWED_ORIGINS` | 额外完整源，逗号分隔；未配置时为本地主源自动补同端口 localhost/127.0.0.1 别名；生产显式配置可信源 |
 | `COOKIE_SECURE` | HTTPS生产环境设为true；本机HTTP为false |
