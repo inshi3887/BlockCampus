@@ -36,7 +36,7 @@ npm run dev:web
 
 SeaweedFS 单节点 `mini` 模式把 master、volume、filer、S3 网关和管理 UI 放在一个容器中，数据及元数据保存在 `seaweed_objects:/data`。S3 地址为 `http://127.0.0.1:9000`（映射容器 8333），[管理控制台](http://127.0.0.1:9001/)映射容器 12535。控制台开发账号 `admin` / `campus-admin-local-secret`，可通过 `SEAWEED_ADMIN_USER` / `SEAWEED_ADMIN_PASSWORD` 修改；它与 S3 Access Key/Secret Key 独立。只向宿主机回环发布这两个端口，其他内部服务及 WebDAV 不对宿主机开放。
 
-`storage:init` 沿用原 S3 SDK 脚本：创建桶并设置仅 `images/*` 允许匿名 `s3:GetObject` 的策略。已在真实 SeaweedFS 验证重复初始化、签名上传、匿名读取；匿名写入、删除、列桶、非图片路径读取均被拒绝。广告/CDN 图片需配置允许游戏源跨域读取；正式部署使用实际 HTTPS 对象存储/CDN 地址。
+`storage:init` 创建私有桶并移除旧匿名读取策略，升级部署必须重跑此命令。玩家展示图片统一走带账号鉴权的 `/api/media/:id`：仅 approved 图片且本人、公开论坛或有效广告素材可读取，朋友圈对他人不可见；响应为 `private, no-store`。运营待审预览走 `/api/admin/media/:id`。拒审会删除对象；`npm run storage:cleanup -w server` 每批清理 100 条超过 7 天且没有帖子/广告引用的 pending 孤儿，可由定时任务每日执行。广告/CDN 图片需配置允许游戏源跨域读取；正式部署使用实际 HTTPS 对象存储/CDN 地址。
 
 只更新对象存储、不重启已有数据库时，在 Docker 所在环境执行：
 
@@ -94,7 +94,7 @@ Remove-Item Env:OPERATOR_PASSWORD -ErrorAction SilentlyContinue
 | `S3_ACCESS_KEY` | 开发默认 `campus`，Compose 映射为 SeaweedFS 的 `AWS_ACCESS_KEY_ID` |
 | `S3_SECRET_KEY` | 开发默认 `campus-local-secret`，Compose 映射为 `AWS_SECRET_ACCESS_KEY`；与后端一致，绝不发给客户端 |
 | `S3_BUCKET` | 默认 `campus`，由 `npm run storage:init -w server` 创建 |
-| `S3_PUBLIC_URL` | 默认 `http://127.0.0.1:9000/campus`，浏览器可达的对象桶 URL，无结尾斜杠；远端部署换实际对象/CDN 地址并带桶路径 |
+| `S3_PUBLIC_URL` | 默认 `http://127.0.0.1:9000/campus`，仅保留给运营端广告素材配置；玩家展示不使用该直连地址，统一走鉴权代理 |
 | `SEAWEED_ADMIN_USER` / `SEAWEED_ADMIN_PASSWORD` | 管理 UI 独立账号，开发默认 `admin` / `campus-admin-local-secret`；非 S3 API 凭据 |
 
 **内测限制：自建实名/防沉迷占位可被修改客户端绕过；仅在限号、不商业化的内测阶段接受。商业化前必须切换国家实名/防沉迷接口。**
